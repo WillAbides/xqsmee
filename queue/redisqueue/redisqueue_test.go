@@ -95,24 +95,24 @@ func TestQueueServer_Push(t *testing.T) {
 	})
 }
 
-func TestQueueServer_BPop(t *testing.T) {
+func TestQueueServer_Pop(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
 		conn := redisPool.Get()
 		defer conn.Close()
 		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
 		assert.Nil(tt, err)
-		got, err := tt.queueServer.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 0})
+		got, err := tt.queueServer.Pop(context.Background(), &queue.PopRequest{QueueName: "bar", Timeout: 0})
 		assert.Nil(tt, err)
 		assert.Equal(tt, tt.webRequest, got.WebRequest)
 	})
 
 	t.Run("blocks", func(t *testing.T) {
 		tt := testSetup(t)
-		gotChan := make(chan *queue.BPopResponse, 1)
+		gotChan := make(chan *queue.PopResponse, 1)
 		errChan := make(chan error, 1)
 		go func() {
-			got, err := tt.queueServer.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 0})
+			got, err := tt.queueServer.Pop(context.Background(), &queue.PopRequest{QueueName: "bar", Timeout: 0})
 			gotChan <- got
 			errChan <- err
 		}()

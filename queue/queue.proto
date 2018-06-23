@@ -12,12 +12,12 @@ message WebRequest {
     string Body = 4;
 }
 
-message BPopRequest {
+message PopRequest {
     string QueueName = 1;
     int64 Timeout = 2;
 }
 
-message BPopResponse {
+message PopResponse {
     WebRequest WebRequest = 1;
 }
 
@@ -39,7 +39,7 @@ message PushResponse {
 }
 
 service Queue {
-    rpc BPop (BPopRequest) returns (BPopResponse);
+    rpc Pop (PopRequest) returns (PopResponse);
     rpc Peek (PeekRequest) returns (PeekResponse);
     rpc Push (PushRequest) returns (PushResponse);
 }

@@ -22,9 +22,9 @@ type QueueServer struct {
 	q *Queue
 }
 
-func (qs *QueueServer) BPop(ctx context.Context, request *queue.BPopRequest) (*queue.BPopResponse, error) {
+func (qs *QueueServer) Pop(ctx context.Context, request *queue.PopRequest) (*queue.PopResponse, error) {
 	webRequest, err := qs.q.Pop(ctx, request.GetQueueName(), request.GetTimeout())
-	return &queue.BPopResponse{WebRequest: webRequest}, err
+	return &queue.PopResponse{WebRequest: webRequest}, err
 }
 
 func (qs *QueueServer) Peek(ctx context.Context, request *queue.PeekRequest) (*queue.PeekResponse, error) {
