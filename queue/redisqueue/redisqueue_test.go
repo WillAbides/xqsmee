@@ -8,19 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
+	"strconv"
 )
 
 var redisPool = &redis.Pool{
-	MaxIdle:     100,
-	MaxActive:   100,
-	IdleTimeout: 60 * time.Second,
-	Wait:        true,
-	Dial:        func() (redis.Conn, error) { return redis.Dial("tcp", ":6379", redis.DialDatabase(10)) },
-	TestOnBorrow: func(c redis.Conn, t time.Time) error {
-		_, err := c.Do("PING")
-		return err
-	},
+	Dial: func() (redis.Conn, error) { return redis.Dial("tcp", ":6379", redis.DialDatabase(10)) },
 }
 
 type testObjects struct {
@@ -48,8 +40,7 @@ func testSetup(t *testing.T) *testObjects {
 		Host:       "yomamashost",
 	}
 
-	webRequestBytes, err := proto.Marshal(webRequest)
-	require.Nil(t, err)
+	webRequest, webRequestBytes := newWebRequestAndBytes(t, "foo")
 
 	return &testObjects{
 		T: t,
@@ -60,6 +51,22 @@ func testSetup(t *testing.T) *testObjects {
 		webRequest:      webRequest,
 		webRequestBytes: webRequestBytes,
 	}
+}
+
+func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte) {
+	t.Helper()
+	wr := &queue.WebRequest{
+		Body: body,
+		Header: []*queue.Header{
+			{Name: "fakeheader", Value: []string{"hi"}},
+			{Name: "fakeheader2", Value: []string{"hi", "bye"}},
+		},
+		ReceivedAt: 4,
+		Host:       "yomamashost",
+	}
+	wrb, err := proto.Marshal(wr)
+	require.Nil(t, err)
+	return wr, wrb
 }
 
 func TestQueue_Push(t *testing.T) {
@@ -140,6 +147,34 @@ func TestQueue_BPop(t *testing.T) {
 		assert.Nil(tt, <-errChan)
 		got := <-gotChan
 		assert.Equal(tt, tt.webRequest, got.GetWebRequest())
+	})
+}
+
+func TestQueue_Peek(t *testing.T) {
+	t.Run("works", func(t *testing.T) {
+		tt := testSetup(t)
+		conn := redisPool.Get()
+		defer conn.Close()
+		for i := 0; i < 20; i++ {
+			body := strconv.Itoa(i)
+			_, wrb := newWebRequestAndBytes(t, body)
+			_, err := conn.Do("RPUSH", "foo:bar", wrb)
+			require.Nil(tt, err)
+		}
+		response, err := tt.queue.Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
+		assert.Nil(t, err)
+		for i := 0; i < 15; i++ {
+			exbody := strconv.Itoa(i)
+			body := response.WebRequest[i].GetBody()
+			assert.Equal(t, exbody, body)
+		}
+	})
+
+	t.Run("works on empty queue", func(t *testing.T) {
+		tt := testSetup(t)
+		response, err := tt.queue.Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
+		assert.Nil(t, err)
+		assert.Equal(tt, 0, len(response.GetWebRequest()))
 	})
 }
 

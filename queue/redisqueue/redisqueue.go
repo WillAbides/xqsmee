@@ -94,7 +94,37 @@ func (q *Queue) BPop(ctx context.Context, popRequest *queue.BPopRequest) (*queue
 }
 
 func (q *Queue) Peek(ctx context.Context, peekRequest *queue.PeekRequest) (*queue.PeekResponse, error) {
-	panic("implement me")
+	response := new(queue.PeekResponse)
+	if err := q.validate(); err != nil {
+		return response, err
+	}
+	conn := q.Pool.Get()
+	defer conn.Close()
+	count := peekRequest.GetCount()
+	if count == 0 {
+		count = 10
+	}
+	key := q.key(peekRequest.GetQueueName())
+	values, err := redis.ByteSlices(conn.Do("LRANGE", key, 0, count - 1))
+	switch err {
+	case nil:
+	case redis.ErrNil:
+		return response, nil
+	default:
+		return response, err
+	}
+
+	webRequests := []*queue.WebRequest{}
+	for _, webRequestBytes := range values {
+		webRequest := new(queue.WebRequest)
+		err = proto.Unmarshal(webRequestBytes, webRequest)
+		if err != nil {
+			return response, err
+		}
+		webRequests = append(webRequests, webRequest)
+	}
+	response.WebRequest = webRequests
+	return response, nil
 }
 
 func New(prefix string, pool *redis.Pool) *Queue {

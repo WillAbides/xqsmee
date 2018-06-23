@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"time"
+	"encoding/json"
 )
 
 type Service struct {
@@ -30,6 +31,7 @@ func (s *Service) Router() *mux.Router {
 	r := mux.NewRouter()
 	sr := r.PathPrefix("/{key}").Subrouter()
 	sr.HandleFunc("", s.postHandler).Methods(http.MethodPost)
+	sr.HandleFunc("", s.peekHandler).Methods(http.MethodGet)
 	sr.HandleFunc("/pop", s.popHandler).Methods(http.MethodGet)
 	return r
 }
@@ -55,6 +57,34 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "failed adding to queue", http.StatusInternalServerError)
 		return
+	}
+}
+
+func (s *Service) peekHandler(w http.ResponseWriter, r *http.Request) {
+	key := mux.Vars(r)["key"]
+	if key == "" {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
+
+	peekRequest := &queue.PeekRequest{QueueName: key}
+
+	peekResponse, err := s.queue.Peek(r.Context(), peekRequest)
+	if err != nil {
+		http.Error(w, "failed querying queue", http.StatusInternalServerError)
+		return
+	}
+
+	webRequest := peekResponse.GetWebRequest()
+	if webRequest == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	} else {
+		err = json.NewEncoder(w).Encode(webRequest)
+		if err != nil {
+			http.Error(w, "failed encoding json", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
