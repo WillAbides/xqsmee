@@ -9,10 +9,10 @@ import (
 	"testing"
 )
 
-func TestQueue_BPop_Slow(t *testing.T) {
+func TestQueueServer_BPop_Slow(t *testing.T) {
 	t.Run("returns empty after timeout", func(t *testing.T) {
 		tt := testSetup(t)
-		got, err := tt.queue.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 1})
+		got, err := tt.queueServer.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 1})
 		assert.Nil(tt, err)
 		assert.Empty(tt, got.WebRequest)
 	})

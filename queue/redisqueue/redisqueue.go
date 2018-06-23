@@ -18,94 +18,80 @@ type Queue struct {
 	Pool   *redis.Pool
 }
 
-func (q *Queue) Push(ctx context.Context, pushRequest *queue.PushRequest) (*queue.PushResponse, error) {
-	response := new(queue.PushResponse)
-	var err error
-	if err = q.validate(); err != nil {
-		return response, err
+type QueueServer struct {
+	q *Queue
+}
+
+func (qs *QueueServer) BPop(ctx context.Context, request *queue.BPopRequest) (*queue.BPopResponse, error) {
+	webRequest, err := qs.q.Pop(ctx, request.GetQueueName(), request.GetTimeout())
+	return &queue.BPopResponse{WebRequest: webRequest}, err
+}
+
+func (qs *QueueServer) Peek(ctx context.Context, request *queue.PeekRequest) (*queue.PeekResponse, error) {
+	webRequests, err := qs.q.Peek(ctx, request.GetQueueName(), request.GetCount())
+	return &queue.PeekResponse{WebRequest: webRequests}, err
+}
+
+func (qs *QueueServer) Push(ctx context.Context, request *queue.PushRequest) (*queue.PushResponse, error) {
+	return new(queue.PushResponse), qs.q.Push(ctx, request.GetQueueName(), request.GetWebRequest())
+}
+
+func (q *Queue) Push(ctx context.Context, queueName string, webRequests []*queue.WebRequest) error {
+	if err := q.validate(); err != nil {
+		return err
 	}
 	conn := q.Pool.Get()
 	defer conn.Close()
-	key := q.key(pushRequest.GetQueueName())
-	for _, webRequest := range pushRequest.WebRequest {
+	key := q.key(queueName)
+	for _, webRequest := range webRequests {
 		protoBytes, err := proto.Marshal(webRequest)
 		if err != nil {
-			return response, errors.Wrap(err, "failed marshaling protobuf")
+			return errors.Wrap(err, "failed marshaling protobuf")
 		}
 		_, err = conn.Do("RPUSH", key, protoBytes)
 		if err != nil {
-			return response, err
+			return err
 		}
 	}
-	return response, nil
+	return nil
 }
 
-func (q *Queue) Pop(ctx context.Context, popRequest *queue.PopRequest) (*queue.PopResponse, error) {
-	response := new(queue.PopResponse)
-	var err error
-	if err = q.validate(); err != nil {
-		return response, err
-	}
-	conn := q.Pool.Get()
-	defer conn.Close()
-	key := q.key(popRequest.GetQueueName())
-	replyBytes, err := redis.Bytes(conn.Do("LPOP", key))
-	switch err {
-	case nil:
-	case redis.ErrNil:
-		return response, nil
-	default:
-		return response, err
-	}
-
-	webRequest := new(queue.WebRequest)
-	err = proto.Unmarshal(replyBytes, webRequest)
-	if err != nil {
-		return response, err
-	}
-	response.WebRequest = webRequest
-	return response, nil
-}
-
-func (q *Queue) BPop(ctx context.Context, popRequest *queue.BPopRequest) (*queue.BPopResponse, error) {
-	response := new(queue.BPopResponse)
+func (q *Queue) Pop(ctx context.Context, queueName string, timeout int64) (*queue.WebRequest, error) {
 	if err := q.validate(); err != nil {
-		return response, err
+		return nil, err
 	}
 	conn := q.Pool.Get()
 	defer conn.Close()
-	key := q.key(popRequest.GetQueueName())
-	values, err := redis.ByteSlices(conn.Do("BLPOP", key, popRequest.GetTimeout()))
+	key := q.key(queueName)
+	values, err := redis.ByteSlices(conn.Do("BLPOP", key, timeout))
 	switch err {
 	case nil:
 	case redis.ErrNil:
-		return response, nil
+		return nil, nil
 	default:
-		return response, err
+		return nil, err
 	}
 	if len(values) < 2 {
-		return response, nil
+		return nil, nil
 	}
 	webRequestBytes := values[1]
 	webRequest := new(queue.WebRequest)
 	err = proto.Unmarshal(webRequestBytes, webRequest)
-	response.WebRequest = webRequest
-	return response, err
+	return webRequest, err
 }
 
-func (q *Queue) Peek(ctx context.Context, peekRequest *queue.PeekRequest) (*queue.PeekResponse, error) {
-	response := new(queue.PeekResponse)
+func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*queue.WebRequest, error) {
+	response := make([]*queue.WebRequest, 0)
 	if err := q.validate(); err != nil {
 		return response, err
 	}
 	conn := q.Pool.Get()
 	defer conn.Close()
-	count := peekRequest.GetCount()
 	if count == 0 {
 		count = 10
 	}
-	key := q.key(peekRequest.GetQueueName())
-	values, err := redis.ByteSlices(conn.Do("LRANGE", key, 0, count - 1))
+	key := q.key(queueName)
+	values, err := redis.ByteSlices(conn.Do("LRANGE", key, 0, count-1))
 	switch err {
 	case nil:
 	case redis.ErrNil:
@@ -113,17 +99,14 @@ func (q *Queue) Peek(ctx context.Context, peekRequest *queue.PeekRequest) (*queu
 	default:
 		return response, err
 	}
-
-	webRequests := []*queue.WebRequest{}
 	for _, webRequestBytes := range values {
 		webRequest := new(queue.WebRequest)
 		err = proto.Unmarshal(webRequestBytes, webRequest)
 		if err != nil {
 			return response, err
 		}
-		webRequests = append(webRequests, webRequest)
+		response = append(response, webRequest)
 	}
-	response.WebRequest = webRequests
 	return response, nil
 }
 
@@ -131,6 +114,12 @@ func New(prefix string, pool *redis.Pool) *Queue {
 	return &Queue{
 		Prefix: prefix,
 		Pool:   pool,
+	}
+}
+
+func (q *Queue) QueueServer() *QueueServer {
+	return &QueueServer{
+		q: q,
 	}
 }
 

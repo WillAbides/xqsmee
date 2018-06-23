@@ -2,18 +2,25 @@ package queue
 
 import (
 	"bytes"
+	"context"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 )
 
 //go:generate protoc --go_out=plugins=grpc:. queue.proto
-//go:generate mockgen -destination mockqueue/mockqueue.go -package mockqueue -source=queue.pb.go
+//go:generate mockgen -destination mockqueue/mockqueue.go -package mockqueue -source=queue.go
 
 var (
 	ErrInvalidArgument = errors.New("invalid argument")
 	ErrNilReq          = errors.Wrap(ErrInvalidArgument, "req is nil")
 )
+
+type Queue interface {
+	Peek(context.Context, string, int64) ([]*WebRequest, error)
+	Pop(context.Context, string, int64) (*WebRequest, error)
+	Push(context.Context, string, []*WebRequest) error
+}
 
 func getHeadersFromHttpRequest(req *http.Request) []*Header {
 	headers := []*Header{}

@@ -7,8 +7,8 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 	"strconv"
+	"testing"
 )
 
 var redisPool = &redis.Pool{
@@ -16,6 +16,7 @@ var redisPool = &redis.Pool{
 }
 
 type testObjects struct {
+	queueServer     *QueueServer
 	queue           *Queue
 	webRequest      *queue.WebRequest
 	webRequestBytes []byte
@@ -42,12 +43,15 @@ func testSetup(t *testing.T) *testObjects {
 
 	webRequest, webRequestBytes := newWebRequestAndBytes(t, "foo")
 
+	q := &Queue{
+		Prefix: "foo",
+		Pool:   redisPool,
+	}
+
 	return &testObjects{
-		T: t,
-		queue: &Queue{
-			Prefix: "foo",
-			Pool:   redisPool,
-		},
+		T:               t,
+		queue:           q,
+		queueServer:     &QueueServer{q: q},
 		webRequest:      webRequest,
 		webRequestBytes: webRequestBytes,
 	}
@@ -69,10 +73,10 @@ func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte
 	return wr, wrb
 }
 
-func TestQueue_Push(t *testing.T) {
+func TestQueueServer_Push(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
-		pushResponse, err := tt.queue.Push(context.Background(), queue.NewPushRequest("bar", tt.webRequest))
+		pushResponse, err := tt.queueServer.Push(context.Background(), queue.NewPushRequest("bar", tt.webRequest))
 		assert.Empty(t, pushResponse)
 		assert.Nil(tt, err)
 		conn := redisPool.Get()
@@ -85,48 +89,20 @@ func TestQueue_Push(t *testing.T) {
 	t.Run("errors on validation error", func(t *testing.T) {
 		tt := testSetup(t)
 		tt.queue.Prefix = ""
-		pushResponse, err := tt.queue.Push(context.Background(), queue.NewPushRequest("bar", tt.webRequest))
+		pushResponse, err := tt.queueServer.Push(context.Background(), queue.NewPushRequest("bar", tt.webRequest))
 		assert.Empty(t, pushResponse)
 		assert.Equal(tt, ErrEmptyPrefix, err)
 	})
 }
 
-func TestQueue_Pop(t *testing.T) {
+func TestQueueServer_BPop(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
 		conn := redisPool.Get()
 		defer conn.Close()
 		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
 		assert.Nil(tt, err)
-		got, err := tt.queue.Pop(context.Background(), &queue.PopRequest{QueueName: "bar"})
-		assert.Nil(tt, err)
-		assert.Equal(tt, tt.webRequest, got.WebRequest)
-	})
-
-	t.Run("empty response when queue is empty", func(t *testing.T) {
-		tt := testSetup(t)
-		got, err := tt.queue.Pop(context.Background(), &queue.PopRequest{QueueName: "bar"})
-		assert.Nil(tt, err)
-		assert.Empty(tt, got.GetWebRequest())
-	})
-
-	t.Run("errors on validation error", func(t *testing.T) {
-		tt := testSetup(t)
-		tt.queue.Prefix = ""
-		got, err := tt.queue.Pop(context.Background(), &queue.PopRequest{QueueName: "bar"})
-		assert.Equal(tt, ErrEmptyPrefix, err)
-		assert.Empty(tt, got)
-	})
-}
-
-func TestQueue_BPop(t *testing.T) {
-	t.Run("works", func(t *testing.T) {
-		tt := testSetup(t)
-		conn := redisPool.Get()
-		defer conn.Close()
-		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
-		assert.Nil(tt, err)
-		got, err := tt.queue.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 0})
+		got, err := tt.queueServer.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 0})
 		assert.Nil(tt, err)
 		assert.Equal(tt, tt.webRequest, got.WebRequest)
 	})
@@ -136,7 +112,7 @@ func TestQueue_BPop(t *testing.T) {
 		gotChan := make(chan *queue.BPopResponse, 1)
 		errChan := make(chan error, 1)
 		go func() {
-			got, err := tt.queue.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 0})
+			got, err := tt.queueServer.BPop(context.Background(), &queue.BPopRequest{QueueName: "bar", Timeout: 0})
 			gotChan <- got
 			errChan <- err
 		}()
@@ -150,7 +126,7 @@ func TestQueue_BPop(t *testing.T) {
 	})
 }
 
-func TestQueue_Peek(t *testing.T) {
+func TestQueueServer_Peek(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
 		conn := redisPool.Get()
@@ -161,7 +137,7 @@ func TestQueue_Peek(t *testing.T) {
 			_, err := conn.Do("RPUSH", "foo:bar", wrb)
 			require.Nil(tt, err)
 		}
-		response, err := tt.queue.Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
+		response, err := tt.queueServer.Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
 		assert.Nil(t, err)
 		for i := 0; i < 15; i++ {
 			exbody := strconv.Itoa(i)
@@ -172,7 +148,7 @@ func TestQueue_Peek(t *testing.T) {
 
 	t.Run("works on empty queue", func(t *testing.T) {
 		tt := testSetup(t)
-		response, err := tt.queue.Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
+		response, err := tt.queueServer.Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
 		assert.Nil(t, err)
 		assert.Equal(tt, 0, len(response.GetWebRequest()))
 	})

@@ -1,20 +1,19 @@
 package hooks
 
 import (
+	"encoding/json"
 	"github.com/WillAbides/xqsmee/queue"
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/mux"
 	"net/http"
 	"time"
-	"encoding/json"
 )
 
 type Service struct {
-	queue              queue.QueueServer
+	queue              queue.Queue
 	receivedAtOverride int64
 }
 
-func New(queue queue.QueueServer) *Service {
+func New(queue queue.Queue) *Service {
 	return &Service{
 		queue: queue,
 	}
@@ -32,7 +31,6 @@ func (s *Service) Router() *mux.Router {
 	sr := r.PathPrefix("/{key}").Subrouter()
 	sr.HandleFunc("", s.postHandler).Methods(http.MethodPost)
 	sr.HandleFunc("", s.peekHandler).Methods(http.MethodGet)
-	sr.HandleFunc("/pop", s.popHandler).Methods(http.MethodGet)
 	return r
 }
 
@@ -49,11 +47,7 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pushRequest := &queue.PushRequest{
-		QueueName:  key,
-		WebRequest: []*queue.WebRequest{webRequest},
-	}
-	_, err = s.queue.Push(r.Context(), pushRequest)
+	err = s.queue.Push(r.Context(), key, []*queue.WebRequest{webRequest})
 	if err != nil {
 		http.Error(w, "failed adding to queue", http.StatusInternalServerError)
 		return
@@ -67,50 +61,19 @@ func (s *Service) peekHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peekRequest := &queue.PeekRequest{QueueName: key}
-
-	peekResponse, err := s.queue.Peek(r.Context(), peekRequest)
+	webRequests, err := s.queue.Peek(r.Context(), key, 0)
 	if err != nil {
 		http.Error(w, "failed querying queue", http.StatusInternalServerError)
 		return
 	}
 
-	webRequest := peekResponse.GetWebRequest()
-	if webRequest == nil {
+	if webRequests == nil {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	} else {
-		err = json.NewEncoder(w).Encode(webRequest)
+		err = json.NewEncoder(w).Encode(webRequests)
 		if err != nil {
 			http.Error(w, "failed encoding json", http.StatusInternalServerError)
-			return
-		}
-	}
-}
-
-func (s *Service) popHandler(w http.ResponseWriter, r *http.Request) {
-	key := mux.Vars(r)["key"]
-	if key == "" {
-		http.Error(w, "", http.StatusBadRequest)
-		return
-	}
-
-	popRequest := &queue.PopRequest{QueueName: key}
-
-	popResponse, err := s.queue.Pop(r.Context(), popRequest)
-	if err != nil {
-		http.Error(w, "failed querying queue", http.StatusInternalServerError)
-		return
-	}
-	webRequest := popResponse.WebRequest
-
-	if webRequest == nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	} else {
-		err := new(jsonpb.Marshaler).Marshal(w, webRequest)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}

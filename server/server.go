@@ -41,7 +41,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	queue.RegisterQueueServer(grpcServer, redisQueue)
+	queue.RegisterQueueServer(grpcServer, redisQueue.QueueServer())
 
 	httpServer := &http.Server{
 		Handler: router,
