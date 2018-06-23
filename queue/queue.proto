@@ -30,16 +30,7 @@ message PeekResponse {
     repeated WebRequest WebRequest = 1;
 }
 
-message PushRequest {
-    string QueueName = 1;
-    repeated WebRequest WebRequest = 2;
-}
-
-message PushResponse {
-}
-
 service Queue {
     rpc Pop (PopRequest) returns (PopResponse);
     rpc Peek (PeekRequest) returns (PeekResponse);
-    rpc Push (PushRequest) returns (PushResponse);
 }

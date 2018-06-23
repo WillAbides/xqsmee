@@ -60,11 +60,3 @@ func NewWebRequestFromHttpRequest(req *http.Request, receivedAt int64) (*WebRequ
 		Host:       req.Host,
 	}, nil
 }
-
-func NewPushRequest(queueName string, webRequests ...*WebRequest) *PushRequest {
-	pushRequest := &PushRequest{
-		QueueName: queueName,
-	}
-	pushRequest.WebRequest = append(pushRequest.WebRequest, webRequests...)
-	return pushRequest
-}

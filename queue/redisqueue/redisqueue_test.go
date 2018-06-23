@@ -73,11 +73,10 @@ func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte
 	return wr, wrb
 }
 
-func TestQueueServer_Push(t *testing.T) {
+func TestQueue_Push(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
-		pushResponse, err := tt.queueServer.Push(context.Background(), queue.NewPushRequest("bar", tt.webRequest))
-		assert.Empty(t, pushResponse)
+		err := tt.queue.Push(context.Background(), "bar", []*queue.WebRequest{tt.webRequest})
 		assert.Nil(tt, err)
 		conn := redisPool.Get()
 		defer conn.Close()
@@ -89,8 +88,7 @@ func TestQueueServer_Push(t *testing.T) {
 	t.Run("errors on validation error", func(t *testing.T) {
 		tt := testSetup(t)
 		tt.queue.Prefix = ""
-		pushResponse, err := tt.queueServer.Push(context.Background(), queue.NewPushRequest("bar", tt.webRequest))
-		assert.Empty(t, pushResponse)
+		err := tt.queue.Push(context.Background(), "bar", []*queue.WebRequest{tt.webRequest})
 		assert.Equal(tt, ErrEmptyPrefix, err)
 	})
 }

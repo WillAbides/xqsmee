@@ -32,10 +32,6 @@ func (qs *QueueServer) Peek(ctx context.Context, request *queue.PeekRequest) (*q
 	return &queue.PeekResponse{WebRequest: webRequests}, err
 }
 
-func (qs *QueueServer) Push(ctx context.Context, request *queue.PushRequest) (*queue.PushResponse, error) {
-	return new(queue.PushResponse), qs.q.Push(ctx, request.GetQueueName(), request.GetWebRequest())
-}
-
 func (q *Queue) Push(ctx context.Context, queueName string, webRequests []*queue.WebRequest) error {
 	if err := q.validate(); err != nil {
 		return err
