@@ -10,10 +10,19 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 )
 
 var redisPool = &redis.Pool{
-	Dial: func() (redis.Conn, error) { return redis.Dial("tcp", ":6379", redis.DialDatabase(10)) },
+	MaxActive: 100,
+	Wait:      true,
+	Dial: func() (redis.Conn, error) {
+		return redis.DialURL("redis://:6379/10")
+	},
+	TestOnBorrow: func(c redis.Conn, t time.Time) error {
+		_, err := c.Do("PING")
+		return err
+	},
 }
 
 type testObjects struct {

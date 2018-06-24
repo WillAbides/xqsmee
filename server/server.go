@@ -1,57 +1,37 @@
-package main
+package server
 
 import (
 	"github.com/WillAbides/xqsmee/queue"
-	"github.com/WillAbides/xqsmee/queue/redisqueue"
 	"github.com/WillAbides/xqsmee/services/hooks"
-	"github.com/gomodule/redigo/redis"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
-	"log"
 	"net"
 	"net/http"
-	"time"
 )
 
-var redisPool = &redis.Pool{
-	MaxIdle:     100,
-	MaxActive:   100,
-	IdleTimeout: 60 * time.Second,
-	Wait:        true,
-	Dial:        func() (redis.Conn, error) { return redis.Dial("tcp", ":6379") },
-	TestOnBorrow: func(c redis.Conn, t time.Time) error {
-		_, err := c.Do("PING")
-		return err
-	},
+type Config struct {
+	Queue       queue.Queue
+	QueueServer queue.QueueServer
+	Listener    net.Listener
 }
 
-func main() {
-	redisQueue := redisqueue.New("xqsmee", redisPool)
-	hooksSvc := hooks.New(redisQueue)
+func Run(config *Config) error {
+	hooksSvc := hooks.New(config.Queue)
 	router := hooksSvc.Router()
 
-	l, err := net.Listen("tcp", "localhost:8089")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	m := cmux.New(l)
+	m := cmux.New(config.Listener)
 	grpcListener := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
 	httpListener := m.Match(cmux.HTTP1Fast())
 
 	grpcServer := grpc.NewServer()
-
-	queue.RegisterQueueServer(grpcServer, redisQueue.QueueServer())
-
+	queue.RegisterQueueServer(grpcServer, config.QueueServer)
 	httpServer := &http.Server{
 		Handler: router,
 	}
 
 	go grpcServer.Serve(grpcListener)
+	defer grpcServer.Stop()
 	go httpServer.Serve(httpListener)
-
-	err = m.Serve()
-	if err != nil {
-		log.Fatal(err)
-	}
+	defer httpServer.Close()
+	return m.Serve()
 }
