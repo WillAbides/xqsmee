@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"strconv"
 	"testing"
+	"os"
 )
 
 var redisPool = &redis.Pool{
@@ -55,6 +56,14 @@ func testSetup(t *testing.T) *testObjects {
 		webRequest:      webRequest,
 		webRequestBytes: webRequestBytes,
 	}
+}
+
+func (tt *testObjects) slowTest() *testObjects {
+	tt.Helper()
+	if os.Getenv("SLOW_TESTS") == "" {
+		tt.Skip("skipping slow test")
+	}
+	return tt
 }
 
 func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte) {
@@ -121,6 +130,13 @@ func TestQueueServer_Pop(t *testing.T) {
 		assert.Nil(tt, <-errChan)
 		got := <-gotChan
 		assert.Equal(tt, tt.webRequest, got.GetWebRequest())
+	})
+
+	t.Run("returns empty after timeout", func(t *testing.T) {
+		tt := testSetup(t).slowTest()
+		got, err := tt.queueServer.Pop(context.Background(), &queue.PopRequest{QueueName: "bar", Timeout: 1})
+		assert.Nil(tt, err)
+		assert.Empty(tt, got.WebRequest)
 	})
 }
 
