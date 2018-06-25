@@ -18,3 +18,7 @@
   go-tests = true
   unused-packages = true
   non-go = true
+
+  [[prune.project]]
+    name = "github.com/golang/protobuf"
+    non-go = false

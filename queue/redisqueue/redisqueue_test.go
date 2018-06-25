@@ -7,7 +7,6 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -69,14 +68,6 @@ func testSetup(t *testing.T) *testObjects {
 	}
 }
 
-func (tt *testObjects) slowTest() *testObjects {
-	tt.Helper()
-	if os.Getenv("SLOW_TESTS") == "" {
-		tt.Skip("skipping slow test")
-	}
-	return tt
-}
-
 func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte) {
 	t.Helper()
 	wr := &queue.WebRequest{
@@ -96,6 +87,17 @@ func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte
 func TestQueue_Push(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
+		done := make(chan struct{})
+		psc := redis.PubSubConn{Conn: redisPool.Get()}
+		defer psc.Conn.Close()
+		psc.Subscribe("foo:bar")
+		go func() {
+			psc.ReceiveWithTimeout(100 * time.Millisecond)
+			msg, ok := psc.ReceiveWithTimeout(100 * time.Millisecond).(redis.Message)
+			tt.assert.True(ok)
+			tt.assert.Equal("new", string(msg.Data))
+			close(done)
+		}()
 		err := tt.queue.Push(context.Background(), "bar", []*queue.WebRequest{tt.webRequest})
 		tt.assert.Nil(err)
 		conn := redisPool.Get()
@@ -103,6 +105,7 @@ func TestQueue_Push(t *testing.T) {
 		reply, err := redis.Values(conn.Do("LRANGE", "foo:bar", 0, -1))
 		tt.assert.Nil(err)
 		tt.assert.Equal(tt.webRequestBytes, reply[0])
+		<-done
 	})
 
 	t.Run("errors on validation error", func(t *testing.T) {
@@ -120,9 +123,9 @@ func TestQueue_Pop(t *testing.T) {
 		defer conn.Close()
 		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
 		tt.assert.Nil(err)
-		got, err := tt.queue.Pop(context.Background(), "bar", 1)
+		got, err := tt.queue.Pop(context.Background(), "bar", 100*time.Millisecond)
 		tt.assert.Nil(err)
-		tt.assert.Equal(tt.webRequest, got)
+		tt.assert.True(proto.Equal(tt.webRequest, got))
 	})
 
 	t.Run("blocks", func(t *testing.T) {
@@ -130,22 +133,25 @@ func TestQueue_Pop(t *testing.T) {
 		gotChan := make(chan *queue.WebRequest, 1)
 		errChan := make(chan error, 1)
 		go func() {
-			got, err := tt.queue.Pop(context.Background(), "bar", 0)
+			got, err := tt.queue.Pop(context.Background(), "bar", time.Second)
 			gotChan <- got
 			errChan <- err
 		}()
 		conn := redisPool.Get()
 		defer conn.Close()
+		time.Sleep(10 * time.Millisecond)
 		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
+		tt.assert.Nil(err)
+		_, err = conn.Do("PUBLISH", "foo:bar", "1")
 		tt.assert.Nil(err)
 		tt.assert.Nil(<-errChan)
 		got := <-gotChan
-		tt.assert.Equal(tt.webRequest, got)
+		tt.assert.True(proto.Equal(tt.webRequest, got))
 	})
 
 	t.Run("returns empty after timeout", func(t *testing.T) {
-		tt := testSetup(t).slowTest()
-		got, err := tt.queue.Pop(context.Background(), "bar", 1)
+		tt := testSetup(t)
+		got, err := tt.queue.Pop(context.Background(), "bar", 100*time.Millisecond)
 		tt.assert.Nil(err)
 		tt.assert.Empty(got)
 	})

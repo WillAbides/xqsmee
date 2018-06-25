@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 //go:generate protoc --go_out=plugins=grpc:. queue.proto
@@ -19,7 +20,7 @@ var (
 type (
 	Queue interface {
 		Peek(context.Context, string, int64) ([]*WebRequest, error)
-		Pop(context.Context, string, int64) (*WebRequest, error)
+		Pop(context.Context, string, time.Duration) (*WebRequest, error)
 		Push(context.Context, string, []*WebRequest) error
 	}
 
@@ -33,7 +34,12 @@ func NewGRPCHandler(q Queue) *GRPCHandler {
 }
 
 func (g *GRPCHandler) Pop(ctx context.Context, request *PopRequest) (*PopResponse, error) {
-	webRequest, err := g.q.Pop(ctx, request.GetQueueName(), request.GetTimeout())
+	var duration time.Duration
+	timeout := request.GetTimeout()
+	if timeout != nil {
+		duration = time.Duration(time.Duration(timeout.GetNanos()) + time.Duration(timeout.GetSeconds())*time.Second)
+	}
+	webRequest, err := g.q.Pop(ctx, request.GetQueueName(), duration)
 	return &PopResponse{WebRequest: webRequest}, err
 }
 

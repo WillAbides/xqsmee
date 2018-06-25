@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/duration.proto";
+
 message Header {
     string name = 1;
     repeated string value = 2;
@@ -14,7 +16,7 @@ message WebRequest {
 
 message PopRequest {
     string QueueName = 1;
-    int64 Timeout = 2;
+    google.protobuf.Duration Timeout = 2;
 }
 
 message PopResponse {

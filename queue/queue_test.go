@@ -5,9 +5,11 @@ import (
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/WillAbides/xqsmee/queue/mockqueue"
 	"github.com/golang/mock/gomock"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 type testObjects struct {
@@ -39,8 +41,8 @@ func testSetup(t *testing.T) *testObjects {
 func TestGRPCHandler_Pop(t *testing.T) {
 	tt := testSetup(t)
 	defer tt.teardown()
-	tt.queue.EXPECT().Pop(gomock.Any(), "asdf", int64(12)).Return(tt.webRequest, nil)
-	popRequest := &queue.PopRequest{QueueName: "asdf", Timeout: 12}
+	tt.queue.EXPECT().Pop(gomock.Any(), "asdf", 12*time.Second).Return(tt.webRequest, nil)
+	popRequest := &queue.PopRequest{QueueName: "asdf", Timeout: ptypes.DurationProto(12 * time.Second)}
 	grpcHandler := queue.NewGRPCHandler(tt.queue)
 	response, err := grpcHandler.Pop(context.Background(), popRequest)
 	tt.assert.Nil(err)
