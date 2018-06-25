@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 
 message Header {
     string name = 1;
@@ -8,7 +9,7 @@ message Header {
 }
 
 message WebRequest {
-    int64 ReceivedAt = 1;
+    google.protobuf.Timestamp ReceivedAt = 1;
     repeated Header Header = 2;
     string Host = 3;
     string Body = 4;

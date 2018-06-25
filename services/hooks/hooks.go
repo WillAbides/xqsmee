@@ -10,7 +10,7 @@ import (
 
 type Service struct {
 	queue              queue.Queue
-	receivedAtOverride int64
+	receivedAtOverride *time.Time
 }
 
 func New(queue queue.Queue) *Service {
@@ -19,11 +19,11 @@ func New(queue queue.Queue) *Service {
 	}
 }
 
-func (s *Service) receivedAt() int64 {
-	if s.receivedAtOverride != 0 {
-		return s.receivedAtOverride
+func (s *Service) receivedAt() time.Time {
+	if s.receivedAtOverride != nil {
+		return *s.receivedAtOverride
 	}
-	return time.Now().UnixNano()
+	return time.Now()
 }
 
 func (s *Service) Router() *mux.Router {

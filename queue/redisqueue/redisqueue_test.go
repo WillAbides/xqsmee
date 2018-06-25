@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,6 +32,7 @@ type testObjects struct {
 	webRequestBytes []byte
 	assert          *assert.Assertions
 	require         *require.Assertions
+	timestamp       *timestamp.Timestamp
 	*testing.T
 }
 
@@ -41,17 +44,21 @@ func testSetup(t *testing.T) *testObjects {
 	_, err := conn.Do("FLUSHDB")
 	require.Nil(t, err)
 
+	now := time.Now()
+	ts, err := ptypes.TimestampProto(now)
+	require.Nil(t, err)
+
 	webRequest := &queue.WebRequest{
 		Body: "foo",
 		Header: []*queue.Header{
 			{Name: "fakeheader", Value: []string{"hi"}},
 			{Name: "fakeheader2", Value: []string{"hi", "bye"}},
 		},
-		ReceivedAt: 4,
+		ReceivedAt: ts,
 		Host:       "yomamashost",
 	}
 
-	webRequest, webRequestBytes := newWebRequestAndBytes(t, "foo")
+	webRequest, webRequestBytes := newWebRequestAndBytes(t, "foo", ts)
 
 	q := &Queue{
 		Prefix: "foo",
@@ -65,10 +72,11 @@ func testSetup(t *testing.T) *testObjects {
 		webRequestBytes: webRequestBytes,
 		assert:          assert.New(t),
 		require:         require.New(t),
+		timestamp:       ts,
 	}
 }
 
-func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte) {
+func newWebRequestAndBytes(t *testing.T, body string, receivedAt *timestamp.Timestamp) (*queue.WebRequest, []byte) {
 	t.Helper()
 	wr := &queue.WebRequest{
 		Body: body,
@@ -76,7 +84,7 @@ func newWebRequestAndBytes(t *testing.T, body string) (*queue.WebRequest, []byte
 			{Name: "fakeheader", Value: []string{"hi"}},
 			{Name: "fakeheader2", Value: []string{"hi", "bye"}},
 		},
-		ReceivedAt: 4,
+		ReceivedAt: receivedAt,
 		Host:       "yomamashost",
 	}
 	wrb, err := proto.Marshal(wr)
@@ -164,7 +172,7 @@ func TestQueue_Peek(t *testing.T) {
 		defer conn.Close()
 		for i := 0; i < 20; i++ {
 			body := strconv.Itoa(i)
-			_, wrb := newWebRequestAndBytes(t, body)
+			_, wrb := newWebRequestAndBytes(t, body, tt.timestamp)
 			_, err := conn.Do("RPUSH", "foo:bar", wrb)
 			tt.require.Nil(err)
 		}

@@ -3,6 +3,8 @@ package queue
 import (
 	"bytes"
 	"context"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
@@ -71,7 +73,7 @@ func readBodyFromHttpRequest(req *http.Request) (string, error) {
 	return string(body), nil
 }
 
-func NewWebRequestFromHttpRequest(req *http.Request, receivedAt int64) (*WebRequest, error) {
+func NewWebRequestFromHttpRequest(req *http.Request, receivedAt time.Time) (*WebRequest, error) {
 	if req == nil {
 		return nil, ErrNilReq
 	}
@@ -79,10 +81,26 @@ func NewWebRequestFromHttpRequest(req *http.Request, receivedAt int64) (*WebRequ
 	if err != nil {
 		return nil, errors.Wrap(err, "failed reading request body")
 	}
+	ts, err := ptypes.TimestampProto(receivedAt)
+	if err != nil {
+		return nil, err
+	}
 	return &WebRequest{
-		ReceivedAt: receivedAt,
+		ReceivedAt: ts,
 		Header:     getHeadersFromHttpRequest(req),
 		Body:       body,
 		Host:       req.Host,
 	}, nil
+}
+
+func (w *WebRequest) MarshalJSON() ([]byte, error) {
+	s, err := new(jsonpb.Marshaler).MarshalToString(w)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(s), nil
+}
+
+func (w *WebRequest) UnmarshalJSON(src []byte) error {
+	return jsonpb.UnmarshalString(string(src), w)
 }
