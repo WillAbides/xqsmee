@@ -18,20 +18,6 @@ type Queue struct {
 	Pool   *redis.Pool
 }
 
-type QueueServer struct {
-	q *Queue
-}
-
-func (qs *QueueServer) Pop(ctx context.Context, request *queue.PopRequest) (*queue.PopResponse, error) {
-	webRequest, err := qs.q.Pop(ctx, request.GetQueueName(), request.GetTimeout())
-	return &queue.PopResponse{WebRequest: webRequest}, err
-}
-
-func (qs *QueueServer) Peek(ctx context.Context, request *queue.PeekRequest) (*queue.PeekResponse, error) {
-	webRequests, err := qs.q.Peek(ctx, request.GetQueueName(), request.GetCount())
-	return &queue.PeekResponse{WebRequest: webRequests}, err
-}
-
 func (q *Queue) Push(ctx context.Context, queueName string, webRequests []*queue.WebRequest) error {
 	if err := q.validate(); err != nil {
 		return err
@@ -110,12 +96,6 @@ func New(prefix string, pool *redis.Pool) *Queue {
 	return &Queue{
 		Prefix: prefix,
 		Pool:   pool,
-	}
-}
-
-func (q *Queue) QueueServer() *QueueServer {
-	return &QueueServer{
-		q: q,
 	}
 }
 

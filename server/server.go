@@ -10,9 +10,8 @@ import (
 )
 
 type Config struct {
-	Queue       queue.Queue
-	QueueServer queue.QueueServer
-	Listener    net.Listener
+	Queue    queue.Queue
+	Listener net.Listener
 }
 
 func Run(config *Config) error {
@@ -24,7 +23,8 @@ func Run(config *Config) error {
 	httpListener := m.Match(cmux.HTTP1Fast())
 
 	grpcServer := grpc.NewServer()
-	queue.RegisterQueueServer(grpcServer, config.QueueServer)
+	grpcHandler := queue.NewGRPCHandler(config.Queue)
+	queue.RegisterQueueServer(grpcServer, grpcHandler)
 	httpServer := &http.Server{
 		Handler: router,
 	}

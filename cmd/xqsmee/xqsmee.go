@@ -38,9 +38,8 @@ var cmd = &cobra.Command{
 		}
 		redisQueue := redisqueue.New(redisKeyPrefix, redisPool)
 		cfg := &server.Config{
-			Queue:       redisQueue,
-			QueueServer: redisQueue.QueueServer(),
-			Listener:    listener,
+			Queue:    redisQueue,
+			Listener: listener,
 		}
 		return server.Run(cfg)
 	},

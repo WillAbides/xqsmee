@@ -113,24 +113,24 @@ func TestQueue_Push(t *testing.T) {
 	})
 }
 
-func TestQueueServer_Pop(t *testing.T) {
+func TestQueue_Pop(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
 		conn := redisPool.Get()
 		defer conn.Close()
 		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
 		tt.assert.Nil(err)
-		got, err := tt.queue.QueueServer().Pop(context.Background(), &queue.PopRequest{QueueName: "bar", Timeout: 0})
+		got, err := tt.queue.Pop(context.Background(), "bar", 1)
 		tt.assert.Nil(err)
-		tt.assert.Equal(tt.webRequest, got.WebRequest)
+		tt.assert.Equal(tt.webRequest, got)
 	})
 
 	t.Run("blocks", func(t *testing.T) {
 		tt := testSetup(t)
-		gotChan := make(chan *queue.PopResponse, 1)
+		gotChan := make(chan *queue.WebRequest, 1)
 		errChan := make(chan error, 1)
 		go func() {
-			got, err := tt.queue.QueueServer().Pop(context.Background(), &queue.PopRequest{QueueName: "bar", Timeout: 0})
+			got, err := tt.queue.Pop(context.Background(), "bar", 0)
 			gotChan <- got
 			errChan <- err
 		}()
@@ -140,18 +140,18 @@ func TestQueueServer_Pop(t *testing.T) {
 		tt.assert.Nil(err)
 		tt.assert.Nil(<-errChan)
 		got := <-gotChan
-		tt.assert.Equal(tt.webRequest, got.GetWebRequest())
+		tt.assert.Equal(tt.webRequest, got)
 	})
 
 	t.Run("returns empty after timeout", func(t *testing.T) {
 		tt := testSetup(t).slowTest()
-		got, err := tt.queue.QueueServer().Pop(context.Background(), &queue.PopRequest{QueueName: "bar", Timeout: 1})
+		got, err := tt.queue.Pop(context.Background(), "bar", 1)
 		tt.assert.Nil(err)
-		tt.assert.Empty(got.WebRequest)
+		tt.assert.Empty(got)
 	})
 }
 
-func TestQueueServer_Peek(t *testing.T) {
+func TestQueue_Peek(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
 		conn := redisPool.Get()
@@ -162,20 +162,20 @@ func TestQueueServer_Peek(t *testing.T) {
 			_, err := conn.Do("RPUSH", "foo:bar", wrb)
 			tt.require.Nil(err)
 		}
-		response, err := tt.queue.QueueServer().Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
+		response, err := tt.queue.Peek(context.Background(), "bar", 15)
 		assert.Nil(t, err)
 		for i := 0; i < 15; i++ {
 			exbody := strconv.Itoa(i)
-			body := response.WebRequest[i].GetBody()
+			body := response[i].GetBody()
 			assert.Equal(t, exbody, body)
 		}
 	})
 
 	t.Run("works on empty queue", func(t *testing.T) {
 		tt := testSetup(t)
-		response, err := tt.queue.QueueServer().Peek(context.Background(), &queue.PeekRequest{QueueName: "bar", Count: 15})
+		response, err := tt.queue.Peek(context.Background(), "bar", 15)
 		tt.assert.Nil(err)
-		tt.assert.Equal(0, len(response.GetWebRequest()))
+		tt.assert.Equal(0, len(response))
 	})
 }
 
