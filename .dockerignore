@@ -1,0 +1,4 @@
+bin/
+Dockerfile
+.dockerignore
+Gopkg.*
