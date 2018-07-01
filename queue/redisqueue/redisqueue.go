@@ -128,6 +128,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 	defer cancel()
 	if timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
 	if err := q.validate(); err != nil {
 		return nil, err

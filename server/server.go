@@ -3,24 +3,20 @@ package server
 import (
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/WillAbides/xqsmee/services/hooks"
-	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"net"
 	"net/http"
 )
 
 type Config struct {
-	Queue    queue.Queue
-	Listener net.Listener
+	Queue        queue.Queue
+	HttpListener net.Listener
+	GrpcListener net.Listener
 }
 
 func Run(config *Config) error {
 	hooksSvc := hooks.New(config.Queue)
 	router := hooksSvc.Router()
-
-	m := cmux.New(config.Listener)
-	grpcListener := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
-	httpListener := m.Match(cmux.HTTP1Fast())
 
 	grpcServer := grpc.NewServer()
 	grpcHandler := queue.NewGRPCHandler(config.Queue)
@@ -28,10 +24,20 @@ func Run(config *Config) error {
 	httpServer := &http.Server{
 		Handler: router,
 	}
-
-	go grpcServer.Serve(grpcListener)
+	grpcErrs := make(chan error)
+	go func() {
+		grpcErrs <- grpcServer.Serve(config.GrpcListener)
+	}()
 	defer grpcServer.Stop()
-	go httpServer.Serve(httpListener)
+	httpErrs := make(chan error)
+	go func() {
+		httpErrs <- httpServer.Serve(config.HttpListener)
+	}()
 	defer httpServer.Close()
-	return m.Serve()
+	select {
+	case err := <-httpErrs:
+		return err
+	case err := <-grpcErrs:
+		return err
+	}
 }

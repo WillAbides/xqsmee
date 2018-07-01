@@ -12,7 +12,8 @@ import (
 )
 
 type Config struct {
-	Address      string
+	Host         string
+	Port         int
 	WithInsecure bool
 	QueueName    string
 	Stdout       io.Writer
@@ -21,12 +22,13 @@ type Config struct {
 
 func dialGRPC(ctx context.Context, config *Config) (*grpc.ClientConn, error) {
 	dialOptions := make([]grpc.DialOption, 0)
-	if config.WithInsecure == true {
+	if config.WithInsecure {
 		dialOptions = append(dialOptions, grpc.WithInsecure())
 	} else {
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	}
-	return grpc.DialContext(ctx, config.Address, dialOptions...)
+	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
+	return grpc.DialContext(ctx, addr, dialOptions...)
 }
 
 func Run(ctx context.Context, config *Config) error {
@@ -55,6 +57,4 @@ func Run(ctx context.Context, config *Config) error {
 			}
 		}
 	}
-
-	return nil
 }
