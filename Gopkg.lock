@@ -48,24 +48,34 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/golang/mock"
-  packages = ["gomock"]
-  revision = "c34cdb4725f4c3844d095133c6e40e448b86589b"
-  version = "v1.1.1"
+  packages = [
+    "gomock",
+    "mockgen",
+    "mockgen/model"
+  ]
+  revision = "22bbf0ddf08105dfa364d0a2fa619dfa71014af5"
 
 [[projects]]
+  branch = "master"
   name = "github.com/golang/protobuf"
   packages = [
     "jsonpb",
     "proto",
+    "protoc-gen-go",
+    "protoc-gen-go/descriptor",
+    "protoc-gen-go/generator",
+    "protoc-gen-go/generator/internal/remap",
+    "protoc-gen-go/grpc",
+    "protoc-gen-go/plugin",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
     "ptypes/struct",
     "ptypes/timestamp"
   ]
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "9eb2c01ac278a5d89ce4b2be68fe4500955d8179"
 
 [[projects]]
   branch = "master"
@@ -532,6 +542,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1d049f103f6d88b3c4c68a6f35e97c869d40079711d11a38b5e7c7ede9840cf0"
+  inputs-digest = "8391af415e47d40357fab87522b458293966ef792b04ffcd770527342cf95fd2"
   solver-name = "gps-cdcl"
   solver-version = 1
