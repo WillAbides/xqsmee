@@ -108,12 +108,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  name = "github.com/soheilhy/cmux"
-  packages = ["."]
-  revision = "e09e9389d85d8492d313d73d1469c029e710623f"
-  version = "v0.1.4"
-
-[[projects]]
   name = "github.com/spf13/afero"
   packages = [
     ".",
@@ -249,6 +243,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e73ef50ed614a0875139d419c5c2b43a2e2e892fe0f226fef256a3cdeb3d32ba"
+  inputs-digest = "542f0423f89522ed8562b6a830558b62981eb48cffb5d7d23d1c12227b487d54"
   solver-name = "gps-cdcl"
   solver-version = 1
