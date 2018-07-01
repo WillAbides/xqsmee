@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/WillAbides/xqsmee/queue"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"io"
 )
 
@@ -21,6 +23,8 @@ func dialGRPC(ctx context.Context, config *Config) (*grpc.ClientConn, error) {
 	dialOptions := make([]grpc.DialOption, 0)
 	if config.WithInsecure == true {
 		dialOptions = append(dialOptions, grpc.WithInsecure())
+	} else {
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	}
 	return grpc.DialContext(ctx, config.Address, dialOptions...)
 }
