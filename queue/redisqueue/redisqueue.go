@@ -117,7 +117,7 @@ loop:
 	}
 
 	// Signal the receiving goroutine to exit by unsubscribing
-	psc.Unsubscribe(channel)
+	_ = psc.Unsubscribe(channel)
 
 	// Wait for goroutine to complete.
 	return <-done

@@ -32,7 +32,7 @@ type (
 )
 
 func NewGRPCHandler(q Queue) *GRPCHandler {
-	return &GRPCHandler{q}
+	return &GRPCHandler{q: q}
 }
 
 func (g *GRPCHandler) Pop(ctx context.Context, request *PopRequest) (*PopResponse, error) {

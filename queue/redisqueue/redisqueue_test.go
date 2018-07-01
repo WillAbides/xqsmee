@@ -48,16 +48,6 @@ func testSetup(t *testing.T) *testObjects {
 	ts, err := ptypes.TimestampProto(now)
 	require.Nil(t, err)
 
-	webRequest := &queue.WebRequest{
-		Body: "foo",
-		Header: []*queue.Header{
-			{Name: "fakeheader", Value: []string{"hi"}},
-			{Name: "fakeheader2", Value: []string{"hi", "bye"}},
-		},
-		ReceivedAt: ts,
-		Host:       "yomamashost",
-	}
-
 	webRequest, webRequestBytes := newWebRequestAndBytes(t, "foo", ts)
 
 	q := &Queue{
@@ -98,7 +88,7 @@ func TestQueue_Push(t *testing.T) {
 		done := make(chan struct{})
 		psc := redis.PubSubConn{Conn: redisPool.Get()}
 		defer psc.Conn.Close()
-		psc.Subscribe("foo:bar")
+		tt.require.Nil(psc.Subscribe("foo:bar"))
 		go func() {
 			psc.ReceiveWithTimeout(100 * time.Millisecond)
 			msg, ok := psc.ReceiveWithTimeout(100 * time.Millisecond).(redis.Message)
