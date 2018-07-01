@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+ROOTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+cd "$ROOTPATH"
+
+go build -o ./bin/xqsmee ./cmd/xqsmee
+go build -o ./bin/xqsmee-client ./cmd/xqsmee-client
