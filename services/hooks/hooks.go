@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/gorilla/mux"
+	"io"
 	"net/http"
 	"time"
 )
@@ -28,10 +29,18 @@ func (s *Service) receivedAt() time.Time {
 
 func (s *Service) Router() *mux.Router {
 	r := mux.NewRouter()
+	r.HandleFunc("/_ping", s.pingHandler)
 	sr := r.PathPrefix("/{key}").Subrouter()
 	sr.HandleFunc("", s.postHandler).Methods(http.MethodPost)
 	sr.HandleFunc("", s.peekHandler).Methods(http.MethodGet)
 	return r
+}
+
+func (s *Service) pingHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := io.WriteString(w, "pong")
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+	}
 }
 
 func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
