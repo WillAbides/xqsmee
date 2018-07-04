@@ -1,54 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"github.com/WillAbides/xqsmee/queue/redisqueue"
 	"github.com/WillAbides/xqsmee/server"
 	"github.com/gomodule/redigo/redis"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"net"
+	"io/ioutil"
+	"log"
 	"os"
 	"time"
 )
 
-var cmd = &cobra.Command{
-	Use: "xqsmee",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		c := new(struct {
-			RedisURL    string
-			MaxActive   int
-			Addr        string
-			RedisPrefix string
-		})
-		err := viper.Unmarshal(c)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		redisPool := &redis.Pool{
-			MaxActive: c.MaxActive,
-			Wait:      true,
-			Dial: func() (redis.Conn, error) {
-				return redis.DialURL(c.RedisURL)
-			},
-			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-				_, err := c.Do("PING")
+var (
+	srvCfg *server.Config
+
+	cmd = &cobra.Command{
+		Use: "xqsmee",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			cc := new(cmdCfg)
+			err := viper.Unmarshal(cc)
+			if err != nil {
 				return err
-			},
-		}
-		listener, err := net.Listen("tcp", c.Addr)
-		if err != nil {
+			}
+			srvCfg, err = cc.serverConfig()
 			return err
-		}
-		redisQueue := redisqueue.New(c.RedisPrefix, redisPool)
-		cfg := &server.Config{
-			Queue:    redisQueue,
-			Listener: listener,
-		}
-		return server.Run(cfg)
-	},
-}
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			err := server.Run(srvCfg)
+			if err != nil {
+				log.Fatal(err)
+			}
+		},
+	}
+)
 
 func init() {
 	cobra.OnInitialize(func() {
@@ -58,18 +44,81 @@ func init() {
 	flags := cmd.Flags()
 	flags.StringP("redisurl", "r", "redis://:6379", "redis url")
 	flags.Int("maxactive", 100, "max number of active redis connections")
-	flags.StringP("addr", "a", ":8000", "tcp address to listen on")
-	flags.String("redisprefix", "xqsmee", "prefix for redis keys")
+	flags.String("httpaddr", ":8443", "tcp address to listen on")
+	flags.String("grpcaddr", ":9443", "tcp address to listen on")
+	flags.String("redisprefix", "xqsmee", "prefix for redis key")
+	flags.String("tlskey", "", "file containing a tls key")
+	flags.String("tlscert", "", "file containing a tls certificate")
+	flags.Bool("no-tls", false, "don't use tls (serve unencrypted http and grpc)")
 	err := viper.BindPFlags(flags)
 	if err != nil {
-		fmt.Println("failed binding flags: ", err)
-		os.Exit(1)
+		panic(err)
 	}
+}
+
+type cmdCfg struct {
+	RedisURL    string
+	MaxActive   int
+	Httpaddr    string
+	Grpcaddr    string
+	RedisPrefix string
+	TLSCert     string
+	TLSKey      string
+	NoTLS       bool `mapstructure:"no-tls"`
+}
+
+func tlsData(noTLS bool, tlsCertFile, tlsKeyFile string) (tlsCert, tlsKey []byte, err error) {
+	if noTLS {
+		return nil, nil, nil
+	}
+	if tlsKeyFile == "" || tlsCertFile == "" {
+		return nil, nil, errors.New("you must specify both --tlskey and --tlscert unless --no-tls is set")
+	}
+	tlsCert, err = ioutil.ReadFile(tlsCertFile)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed reading tls certificate file")
+	}
+	tlsKey, err = ioutil.ReadFile(tlsKeyFile)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed reading tls key file")
+	}
+	return tlsCert, tlsKey, nil
+}
+
+func (c *cmdCfg) serverConfig() (*server.Config, error) {
+	var err error
+	tlsCert, tlsKey, err := tlsData(c.NoTLS, c.TLSCert, c.TLSKey)
+	if err != nil {
+		return nil, err
+	}
+
+	redisPool := &redis.Pool{
+		MaxActive: c.MaxActive,
+		Wait:      true,
+		Dial: func() (redis.Conn, error) {
+			return redis.DialURL(c.RedisURL)
+		},
+		TestOnBorrow: func(conn redis.Conn, t time.Time) error {
+			_, err := conn.Do("PING")
+			return err
+		},
+	}
+	redisQueue := redisqueue.New(c.RedisPrefix, redisPool)
+
+	sCfg := &server.Config{
+		Queue:           redisQueue,
+		Httpaddr:        c.Httpaddr,
+		Grpcaddr:        c.Grpcaddr,
+		TLSKeyPEMBlock:  tlsKey,
+		TLSCertPEMBlock: tlsCert,
+		UseTLS:          !c.NoTLS,
+	}
+
+	return sCfg, nil
 }
 
 func main() {
 	if err := cmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }

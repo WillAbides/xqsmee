@@ -10,20 +10,24 @@ import (
 
 var (
 	queueName  string
-	serverAddr string
+	serverHost string
+	serverPort int
 	insecure   bool
 	separator  string
+	noTLS      bool
 )
 
 var cmd = &cobra.Command{
 	Use: "xqsmee-client",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := &client.Config{
-			Address:      serverAddr,
-			WithInsecure: insecure,
-			QueueName:    queueName,
-			Stdout:       os.Stdout,
-			Separator:    separator,
+			Host:      serverHost,
+			Port:      serverPort,
+			Insecure:  insecure,
+			QueueName: queueName,
+			Stdout:    os.Stdout,
+			Separator: separator,
+			UseTLS:    !noTLS,
 		}
 		return client.Run(context.Background(), cfg)
 	},
@@ -32,11 +36,17 @@ var cmd = &cobra.Command{
 func main() {
 	flags := cmd.Flags()
 	flags.StringVarP(&queueName, "queue", "q", "", "xqsmee queue to watch")
-	flags.StringVarP(&serverAddr, "server", "s", "", "address of xqsmee server")
+	flags.StringVarP(&serverHost, "server", "s", "", "server ip or dns address")
+	flags.IntVarP(&serverPort, "port", "p", 9443, "server grpc port")
 	flags.StringVar(&separator, "ifs", "\n", "record separator")
-	flags.BoolVar(&insecure, "insecure", false, "ignore ssl warnings")
-	cmd.MarkFlagRequired("queue")
-	cmd.MarkFlagRequired("server")
+	flags.BoolVar(&insecure, "insecure", false, "don't check for valid certificate")
+	flags.BoolVar(&noTLS, "no-tls", false, "don't use tls (insecure)")
+	for _, flag := range []string{"queue", "server", "port"} {
+		err := cmd.MarkFlagRequired(flag)
+		if err != nil {
+			panic(err)
+		}
+	}
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprint(os.Stderr, err)
 		os.Exit(1)

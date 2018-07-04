@@ -56,6 +56,16 @@ func (tt *testObjects) doRequest(method, body, url string) *httptest.ResponseRec
 	return res
 }
 
+func TestService_pingHandler(t *testing.T) {
+	t.Run("pongs", func(t *testing.T) {
+		tt := testSetup(t)
+		defer tt.teardown()
+		res := tt.doRequest(http.MethodGet, "", "/_ping")
+		tt.assert.Equal(http.StatusOK, res.Code)
+		tt.assert.Equal("pong", res.Body.String())
+	})
+}
+
 func TestService_postHandler(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)

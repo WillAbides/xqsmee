@@ -117,7 +117,7 @@ loop:
 	}
 
 	// Signal the receiving goroutine to exit by unsubscribing
-	psc.Unsubscribe(channel)
+	_ = psc.Unsubscribe(channel)
 
 	// Wait for goroutine to complete.
 	return <-done
@@ -128,6 +128,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 	defer cancel()
 	if timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
 	if err := q.validate(); err != nil {
 		return nil, err
