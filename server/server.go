@@ -48,15 +48,14 @@ func Run(config *Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed building listeners")
 	}
-	grpcErrs := make(chan error)
-	httpErrs := make(chan error)
+	errs := make(chan error)
 
 	httpServer := &http.Server{
 		Handler: hooks.New(config.Queue).Router(),
 	}
 
 	go func() {
-		httpErrs <- httpServer.Serve(httpListener)
+		errs <- httpServer.Serve(httpListener)
 	}()
 	defer httpServer.Close()
 
@@ -65,14 +64,9 @@ func Run(config *Config) error {
 	queue.RegisterQueueServer(grpcServer, grpcHandler)
 
 	go func() {
-		grpcErrs <- grpcServer.Serve(grpcListener)
+		errs <- grpcServer.Serve(grpcListener)
 	}()
 	defer grpcServer.Stop()
 
-	select {
-	case err := <-httpErrs:
-		return err
-	case err := <-grpcErrs:
-		return err
-	}
+	return <-errs
 }
