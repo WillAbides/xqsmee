@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/WillAbides/xqsmee/queue/redisqueue"
 	"github.com/WillAbides/xqsmee/server"
 	"github.com/gomodule/redigo/redis"
@@ -9,69 +8,33 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"io/ioutil"
+	"log"
 	"os"
 	"time"
 )
 
-var cmd = &cobra.Command{
-	Use: "xqsmee",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		c := new(struct {
-			RedisURL    string
-			MaxActive   int
-			Httpaddr    string
-			Grpcaddr    string
-			RedisPrefix string
-			TLSCert     string
-			TLSKey      string
-			NoTLS       bool `mapstructure:"no-tls"`
-		})
+var (
+	srvCfg *server.Config
 
-		err := viper.Unmarshal(c)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		redisPool := &redis.Pool{
-			MaxActive: c.MaxActive,
-			Wait:      true,
-			Dial: func() (redis.Conn, error) {
-				return redis.DialURL(c.RedisURL)
-			},
-			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-				_, err := c.Do("PING")
+	cmd = &cobra.Command{
+		Use: "xqsmee",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			cc := new(cmdCfg)
+			err := viper.Unmarshal(cc)
+			if err != nil {
 				return err
-			},
-		}
-		redisQueue := redisqueue.New(c.RedisPrefix, redisPool)
-
-		var tlsCert []byte
-		if c.TLSCert != "" {
-			tlsCert, err = ioutil.ReadFile(c.TLSCert)
-			if err != nil {
-				return errors.Wrap(err, "failed reading tls certificate file")
 			}
-		}
-
-		var tlsKey []byte
-		if c.TLSKey != "" {
-			tlsKey, err = ioutil.ReadFile(c.TLSKey)
+			srvCfg, err = cc.serverConfig()
+			return err
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			err := server.Run(srvCfg)
 			if err != nil {
-				return errors.Wrap(err, "failed reading tls key file")
+				log.Fatal(err)
 			}
-		}
-
-		cfg := &server.Config{
-			Queue:           redisQueue,
-			Httpaddr:        c.Httpaddr,
-			Grpcaddr:        c.Grpcaddr,
-			TLSKeyPEMBlock:  tlsKey,
-			TLSCertPEMBlock: tlsCert,
-			UseTLS:          !c.NoTLS,
-		}
-		return server.Run(cfg)
-	},
-}
+		},
+	}
+)
 
 func init() {
 	cobra.OnInitialize(func() {
@@ -87,18 +50,75 @@ func init() {
 	flags.String("tlskey", "", "file containing a tls key")
 	flags.String("tlscert", "", "file containing a tls certificate")
 	flags.Bool("no-tls", false, "don't use tls (serve unencrypted http and grpc)")
-	must(viper.BindPFlags(flags))
-}
-
-func must(err error) {
+	err := viper.BindPFlags(flags)
 	if err != nil {
 		panic(err)
 	}
 }
 
+type cmdCfg struct {
+	RedisURL    string
+	MaxActive   int
+	Httpaddr    string
+	Grpcaddr    string
+	RedisPrefix string
+	TLSCert     string
+	TLSKey      string
+	NoTLS       bool `mapstructure:"no-tls"`
+}
+
+func tlsData(noTLS bool, tlsCertFile, tlsKeyFile string) (tlsCert, tlsKey []byte, err error) {
+	if noTLS {
+		return nil, nil, nil
+	}
+	if tlsKeyFile == "" || tlsCertFile == "" {
+		return nil, nil, errors.New("you must specify both --tlskey and --tlscert unless --no-tls is set")
+	}
+	tlsCert, err = ioutil.ReadFile(tlsCertFile)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed reading tls certificate file")
+	}
+	tlsKey, err = ioutil.ReadFile(tlsKeyFile)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed reading tls key file")
+	}
+	return tlsCert, tlsKey, nil
+}
+
+func (c *cmdCfg) serverConfig() (*server.Config, error) {
+	var err error
+	tlsCert, tlsKey, err := tlsData(c.NoTLS, c.TLSCert, c.TLSKey)
+	if err != nil {
+		return nil, err
+	}
+
+	redisPool := &redis.Pool{
+		MaxActive: c.MaxActive,
+		Wait:      true,
+		Dial: func() (redis.Conn, error) {
+			return redis.DialURL(c.RedisURL)
+		},
+		TestOnBorrow: func(conn redis.Conn, t time.Time) error {
+			_, err := conn.Do("PING")
+			return err
+		},
+	}
+	redisQueue := redisqueue.New(c.RedisPrefix, redisPool)
+
+	sCfg := &server.Config{
+		Queue:           redisQueue,
+		Httpaddr:        c.Httpaddr,
+		Grpcaddr:        c.Grpcaddr,
+		TLSKeyPEMBlock:  tlsKey,
+		TLSCertPEMBlock: tlsCert,
+		UseTLS:          !c.NoTLS,
+	}
+
+	return sCfg, nil
+}
+
 func main() {
 	if err := cmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }
