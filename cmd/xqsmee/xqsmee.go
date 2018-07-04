@@ -5,8 +5,10 @@ import (
 	"github.com/WillAbides/xqsmee/queue/redisqueue"
 	"github.com/WillAbides/xqsmee/server"
 	"github.com/gomodule/redigo/redis"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"io/ioutil"
 	"os"
 	"time"
 )
@@ -43,12 +45,28 @@ var cmd = &cobra.Command{
 		}
 		redisQueue := redisqueue.New(c.RedisPrefix, redisPool)
 
+		var tlsCert []byte
+		if c.TLSCert != "" {
+			tlsCert, err = ioutil.ReadFile(c.TLSCert)
+			if err != nil {
+				return errors.Wrap(err, "failed reading tls certificate file")
+			}
+		}
+
+		var tlsKey []byte
+		if c.TLSKey != "" {
+			tlsKey, err = ioutil.ReadFile(c.TLSKey)
+			if err != nil {
+				return errors.Wrap(err, "failed reading tls key file")
+			}
+		}
+
 		cfg := &server.Config{
 			Queue:           redisQueue,
 			Httpaddr:        c.Httpaddr,
 			Grpcaddr:        c.Grpcaddr,
-			TLSKeyPEMBlock:  []byte(c.TLSKey),
-			TLSCertPEMBlock: []byte(c.TLSCert),
+			TLSKeyPEMBlock:  tlsKey,
+			TLSCertPEMBlock: tlsCert,
 			UseTLS:          !c.NoTLS,
 		}
 		return server.Run(cfg)
@@ -66,10 +84,10 @@ func init() {
 	flags.String("httpaddr", ":8443", "tcp address to listen on")
 	flags.String("grpcaddr", ":9443", "tcp address to listen on")
 	flags.String("redisprefix", "xqsmee", "prefix for redis key")
+	flags.String("tlskey", "", "file containing a tls key")
+	flags.String("tlscert", "", "file containing a tls certificate")
 	flags.Bool("no-tls", false, "don't use tls (serve unencrypted http and grpc)")
 	must(viper.BindPFlags(flags))
-	must(viper.BindEnv("TLSCERT"))
-	must(viper.BindEnv("TLSKEY"))
 }
 
 func must(err error) {
