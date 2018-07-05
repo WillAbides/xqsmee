@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"github.com/WillAbides/xqsmee/queue/redisqueue"
@@ -9,17 +9,17 @@ import (
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"log"
-	"os"
 	"time"
 )
 
 var (
 	srvCfg *server.Config
 
-	cmd = &cobra.Command{
-		Use: "xqsmee",
+	serverCmd = &cobra.Command{
+		Use: "server",
+		Short: "Run xqsmee server",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			cc := new(cmdCfg)
+			cc := new(srvCmdCfg)
 			err := viper.Unmarshal(cc)
 			if err != nil {
 				return err
@@ -37,11 +37,9 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(func() {
-		viper.SetEnvPrefix("XQSMEE")
-		viper.AutomaticEnv()
-	})
-	flags := cmd.Flags()
+	rootCmd.AddCommand(serverCmd)
+
+	flags := serverCmd.Flags()
 	flags.StringP("redisurl", "r", "redis://:6379", "redis url")
 	flags.Int("maxactive", 100, "max number of active redis connections")
 	flags.String("httpaddr", ":8443", "tcp address to listen on")
@@ -56,7 +54,7 @@ func init() {
 	}
 }
 
-type cmdCfg struct {
+type srvCmdCfg struct {
 	RedisURL    string
 	MaxActive   int
 	Httpaddr    string
@@ -85,7 +83,7 @@ func tlsData(noTLS bool, tlsCertFile, tlsKeyFile string) (tlsCert, tlsKey []byte
 	return tlsCert, tlsKey, nil
 }
 
-func (c *cmdCfg) serverConfig() (*server.Config, error) {
+func (c *srvCmdCfg) serverConfig() (*server.Config, error) {
 	var err error
 	tlsCert, tlsKey, err := tlsData(c.NoTLS, c.TLSCert, c.TLSKey)
 	if err != nil {
@@ -115,10 +113,4 @@ func (c *cmdCfg) serverConfig() (*server.Config, error) {
 	}
 
 	return sCfg, nil
-}
-
-func main() {
-	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
-	}
 }
