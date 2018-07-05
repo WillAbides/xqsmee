@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -14,7 +15,7 @@ var (
 	clientCfg *client.Config
 
 	clientCmd = &cobra.Command{
-		Use: "client",
+		Use:   "xqsmee",
 		Short: "Run xqsmee client",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			cc := new(clientCmdCfg)
@@ -35,8 +36,6 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(clientCmd)
-
 	flags := clientCmd.Flags()
 	flags.StringP("queue", "q", "", "xqsmee queue to watch")
 	flags.StringP("server", "s", "", "server ip or dns address")
@@ -44,7 +43,7 @@ func init() {
 	flags.String("ifs", "\n", "record separator")
 	flags.Bool("insecure", false, "don't check for valid certificate")
 	flags.Bool("no-tls", false, "don't use tls (insecure)")
-	for _, flag := range []string{"queue", "server", "port"} {
+	for _, flag := range []string{"queue", "server"} {
 		err := clientCmd.MarkFlagRequired(flag)
 		if err != nil {
 			panic(err)
@@ -59,7 +58,7 @@ func init() {
 type clientCmdCfg struct {
 	QueueName  string `mapstructure:"queue"`
 	ServerHost string `mapstructure:"server"`
-	ServerPort int `mapstructure:"port"`
+	ServerPort int    `mapstructure:"port"`
 	Insecure   bool
 	Separator  string `mapstructure:"ifs"`
 	NoTLS      bool   `mapstructure:"no-tls"`
@@ -75,4 +74,20 @@ func (c *clientCmdCfg) clientConfig() *client.Config {
 		Separator: c.Separator,
 		UseTLS:    !c.NoTLS,
 	}
+}
+
+func Execute() {
+	if err := clientCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+}
+
+func initConfig() {
+	viper.SetEnvPrefix("XQSMEE")
+	viper.AutomaticEnv()
 }

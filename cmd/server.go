@@ -16,7 +16,7 @@ var (
 	srvCfg *server.Config
 
 	serverCmd = &cobra.Command{
-		Use: "server",
+		Use:   "server",
 		Short: "Run xqsmee server",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			cc := new(srvCmdCfg)
@@ -37,7 +37,7 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(serverCmd)
+	clientCmd.AddCommand(serverCmd)
 
 	flags := serverCmd.Flags()
 	flags.StringP("redisurl", "r", "redis://:6379", "redis url")
