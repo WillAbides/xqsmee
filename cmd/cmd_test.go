@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"testing"
@@ -18,11 +18,11 @@ func requireReadFile(t *testing.T, filename string) []byte {
 }
 
 func testdata(filename string) string {
-	return filepath.Join("../../testdata", filename)
+	return filepath.Join("../testdata", filename)
 }
 
 func Test_cmdCfg_serverConfig(t *testing.T) {
-	cfg := &cmdCfg{
+	cfg := &srvCmdCfg{
 		NoTLS:       true,
 		RedisPrefix: "foo",
 		RedisURL:    "redisurl",
