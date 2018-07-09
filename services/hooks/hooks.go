@@ -30,7 +30,7 @@ func (s *Service) receivedAt() time.Time {
 func (s *Service) Router() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/_ping", s.pingHandler)
-	sr := r.PathPrefix("/{key}").Subrouter()
+	sr := r.PathPrefix("/q/{key}").Subrouter()
 	sr.HandleFunc("", s.postHandler).Methods(http.MethodPost)
 	sr.HandleFunc("", s.peekHandler).Methods(http.MethodGet)
 	return r

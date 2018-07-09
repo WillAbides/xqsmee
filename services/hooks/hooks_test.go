@@ -77,7 +77,7 @@ func TestService_postHandler(t *testing.T) {
 			Header:     []*queue.Header{},
 		}
 		tt.queue.EXPECT().Push(gomock.Any(), "asdf", []*queue.WebRequest{exWebRequest}).Return(nil)
-		res := tt.doRequest(http.MethodPost, "hi", "/asdf")
+		res := tt.doRequest(http.MethodPost, "hi", "/q/asdf")
 		tt.assert.Equal(http.StatusOK, res.Code)
 	})
 
@@ -91,7 +91,7 @@ func TestService_postHandler(t *testing.T) {
 			Header:     []*queue.Header{},
 		}
 		tt.queue.EXPECT().Push(gomock.Any(), "asdf", []*queue.WebRequest{exWebRequest}).Return(assert.AnError)
-		res := tt.doRequest(http.MethodPost, "hi", "/asdf")
+		res := tt.doRequest(http.MethodPost, "hi", "/q/asdf")
 		tt.assert.Equal(http.StatusInternalServerError, res.Code)
 	})
 
@@ -105,7 +105,7 @@ func TestService_postHandler(t *testing.T) {
 			Header:     []*queue.Header{},
 		}
 		tt.queue.EXPECT().Push(gomock.Any(), "asdf", []*queue.WebRequest{exWebRequest}).Return(nil)
-		res := tt.doRequest(http.MethodPost, "", "/asdf")
+		res := tt.doRequest(http.MethodPost, "", "/q/asdf")
 		tt.assert.Equal(http.StatusOK, res.Code)
 	})
 }
