@@ -40,7 +40,7 @@ func (g *GRPCHandler) Pop(ctx context.Context, request *PopRequest) (*PopRespons
 	var duration time.Duration
 	timeout := request.GetTimeout()
 	if timeout != nil {
-		duration = time.Duration(time.Duration(timeout.GetNanos()) + time.Duration(timeout.GetSeconds())*time.Second)
+		duration = time.Duration(timeout.GetNanos()) + time.Duration(timeout.GetSeconds())*time.Second
 	}
 	webRequest, err := g.q.Pop(ctx, request.GetQueueName(), duration)
 	return &PopResponse{WebRequest: webRequest}, err
