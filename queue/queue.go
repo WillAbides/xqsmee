@@ -3,12 +3,13 @@ package queue
 import (
 	"bytes"
 	"context"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/pkg/errors"
 )
 
 //go:generate protoc --go_out=plugins=grpc:. queue.proto

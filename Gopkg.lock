@@ -18,6 +18,12 @@
   revision = "f2dff4f73566d1b9bd73f9bfd765030fbae5263a"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/WillAbides/idcheck"
+  packages = ["."]
+  revision = "e4b661bc3f00b6c0772b5a14b2fe134bc164c5a7"
+
+[[projects]]
   name = "github.com/client9/misspell"
   packages = ["."]
   revision = "b90dc15cfd220ecf8bbc9043ecb928cef381f011"
@@ -542,6 +548,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8391af415e47d40357fab87522b458293966ef792b04ffcd770527342cf95fd2"
+  inputs-digest = "90520f5f40d72a1a66991549662a2dbb34552b6495cc3990ea3cbd26e4c88b20"
   solver-name = "gps-cdcl"
   solver-version = 1

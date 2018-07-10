@@ -1,15 +1,16 @@
 package cmd
 
 import (
+	"io/ioutil"
+	"log"
+	"time"
+
 	"github.com/WillAbides/xqsmee/queue/redisqueue"
 	"github.com/WillAbides/xqsmee/server"
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"io/ioutil"
-	"log"
-	"time"
 )
 
 var (

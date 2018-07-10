@@ -2,6 +2,10 @@ package redisqueue
 
 import (
 	"context"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -9,9 +13,6 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"strconv"
-	"testing"
-	"time"
 )
 
 var redisPool = &redis.Pool{

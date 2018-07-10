@@ -2,12 +2,14 @@ package server
 
 import (
 	"crypto/tls"
+	"net"
+	"net/http"
+
+	"github.com/WillAbides/idcheck"
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/WillAbides/xqsmee/services/hooks"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"net"
-	"net/http"
 )
 
 type Config struct {
@@ -17,6 +19,7 @@ type Config struct {
 	TLSCertPEMBlock []byte
 	TLSKeyPEMBlock  []byte
 	UseTLS          bool
+	idcheckSalt     string
 }
 
 func (config *Config) buildListeners() (httpListener, grpcListener net.Listener, err error) {
@@ -32,7 +35,7 @@ func (config *Config) buildListeners() (httpListener, grpcListener net.Listener,
 
 	if config.UseTLS {
 		var cert tls.Certificate
-		cert, err = tls.X509KeyPair([]byte(config.TLSCertPEMBlock), []byte(config.TLSKeyPEMBlock))
+		cert, err = tls.X509KeyPair(config.TLSCertPEMBlock, config.TLSKeyPEMBlock)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed creating tls certificate from key pair")
 		}
@@ -50,8 +53,10 @@ func Run(config *Config) error {
 	}
 	errs := make(chan error)
 
+	idChecker := idcheck.NewIDChecker(idcheck.Salt(config.idcheckSalt))
+
 	httpServer := &http.Server{
-		Handler: hooks.New(config.Queue).Router(),
+		Handler: hooks.New(config.Queue, idChecker).Router(),
 	}
 
 	go func() {
