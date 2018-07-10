@@ -2,21 +2,32 @@ package hooks
 
 import (
 	"encoding/json"
-	"github.com/WillAbides/xqsmee/queue"
-	"github.com/gorilla/mux"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/WillAbides/idcheck"
+	"github.com/WillAbides/xqsmee/queue"
+	"github.com/gorilla/mux"
 )
 
-type Service struct {
-	queue              queue.Queue
-	receivedAtOverride *time.Time
-}
+type (
+	IDChecker interface {
+		NewID() (*idcheck.ID, error)
+		ValidID(*idcheck.ID) bool
+	}
 
-func New(queue queue.Queue) *Service {
+	Service struct {
+		queue              queue.Queue
+		receivedAtOverride *time.Time
+		idChecker          IDChecker
+	}
+)
+
+func New(queue queue.Queue, idChecker IDChecker) *Service {
 	return &Service{
-		queue: queue,
+		idChecker: idChecker,
+		queue:     queue,
 	}
 }
 
@@ -27,12 +38,30 @@ func (s *Service) receivedAt() time.Time {
 	return time.Now()
 }
 
+func (s *Service) idCheckMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := idcheck.FromBase64(mux.Vars(r)["key"])
+		if err != nil || !s.idChecker.ValidID(id) {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Call the next handler, which can be another middleware in the chain, or the final handler.
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Service) Router() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/_ping", s.pingHandler)
+
+	r.HandleFunc("/q/new", s.newQueueHandler).Methods(http.MethodGet)
+
 	sr := r.PathPrefix("/q/{key}").Subrouter()
+
 	sr.HandleFunc("", s.postHandler).Methods(http.MethodPost)
 	sr.HandleFunc("", s.peekHandler).Methods(http.MethodGet)
+	sr.Use(s.idCheckMiddleware)
 	return r
 }
 
@@ -43,15 +72,19 @@ func (s *Service) pingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
-	key := mux.Vars(r)["key"]
-	if key == "" {
-		http.Error(w, "", http.StatusBadRequest)
+func (s *Service) newQueueHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := s.idChecker.NewID()
+	if err != nil {
+		http.Error(w, "failed to create new queue id", http.StatusInternalServerError)
 		return
 	}
+	http.Redirect(w, r, "/q/"+id.Base64(), http.StatusFound)
+}
 
+func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
+	key := mux.Vars(r)["key"]
 	webRequest, err := queue.NewWebRequestFromHttpRequest(r, s.receivedAt())
-	if err != nil {
+	if err != nil || key == "" {
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}

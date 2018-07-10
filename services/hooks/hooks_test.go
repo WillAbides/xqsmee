@@ -1,6 +1,7 @@
 package hooks
 
 import (
+	"github.com/WillAbides/idcheck"
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/WillAbides/xqsmee/queue/mockqueue"
 	"github.com/golang/mock/gomock"
@@ -26,6 +27,8 @@ type testObjects struct {
 	*testing.T
 }
 
+const testQueue = "deoQcZVCBM6UC1OIbTXWeg"
+
 func testSetup(t *testing.T) *testObjects {
 	t.Helper()
 	ctrl := gomock.NewController(t)
@@ -34,7 +37,7 @@ func testSetup(t *testing.T) *testObjects {
 	ts, err := ptypes.TimestampProto(now)
 	require.Nil(t, err)
 	return &testObjects{
-		service: New(mockQueue),
+		service: New(mockQueue, idcheck.NewIDChecker()),
 		queue:   mockQueue,
 		teardown: func() {
 			ctrl.Finish()
@@ -76,8 +79,8 @@ func TestService_postHandler(t *testing.T) {
 			ReceivedAt: tt.timestamp,
 			Header:     []*queue.Header{},
 		}
-		tt.queue.EXPECT().Push(gomock.Any(), "asdf", []*queue.WebRequest{exWebRequest}).Return(nil)
-		res := tt.doRequest(http.MethodPost, "hi", "/q/asdf")
+		tt.queue.EXPECT().Push(gomock.Any(), testQueue, []*queue.WebRequest{exWebRequest}).Return(nil)
+		res := tt.doRequest(http.MethodPost, "hi", "/q/"+testQueue)
 		tt.assert.Equal(http.StatusOK, res.Code)
 	})
 
@@ -90,8 +93,8 @@ func TestService_postHandler(t *testing.T) {
 			ReceivedAt: tt.timestamp,
 			Header:     []*queue.Header{},
 		}
-		tt.queue.EXPECT().Push(gomock.Any(), "asdf", []*queue.WebRequest{exWebRequest}).Return(assert.AnError)
-		res := tt.doRequest(http.MethodPost, "hi", "/q/asdf")
+		tt.queue.EXPECT().Push(gomock.Any(), testQueue, []*queue.WebRequest{exWebRequest}).Return(assert.AnError)
+		res := tt.doRequest(http.MethodPost, "hi", "/q/"+testQueue)
 		tt.assert.Equal(http.StatusInternalServerError, res.Code)
 	})
 
@@ -104,8 +107,8 @@ func TestService_postHandler(t *testing.T) {
 			ReceivedAt: tt.timestamp,
 			Header:     []*queue.Header{},
 		}
-		tt.queue.EXPECT().Push(gomock.Any(), "asdf", []*queue.WebRequest{exWebRequest}).Return(nil)
-		res := tt.doRequest(http.MethodPost, "", "/q/asdf")
+		tt.queue.EXPECT().Push(gomock.Any(), testQueue, []*queue.WebRequest{exWebRequest}).Return(nil)
+		res := tt.doRequest(http.MethodPost, "", "/q/"+testQueue)
 		tt.assert.Equal(http.StatusOK, res.Code)
 	})
 }
