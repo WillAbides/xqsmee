@@ -13,7 +13,7 @@ import (
 
 func requireReadFile(t *testing.T, filename string) []byte {
 	t.Helper()
-	b, err := ioutil.ReadFile(filename)
+	b, err := ioutil.ReadFile(filename) //nolint: gas
 	require.Nil(t, err)
 	return b
 }

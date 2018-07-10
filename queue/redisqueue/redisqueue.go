@@ -120,7 +120,7 @@ loop:
 	}
 
 	// Signal the receiving goroutine to exit by unsubscribing
-	_ = psc.Unsubscribe(channel)
+	_ = psc.Unsubscribe(channel) //nolint: gas
 
 	// Wait for goroutine to complete.
 	return <-done
