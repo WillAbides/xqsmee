@@ -51,7 +51,7 @@ func (g *GRPCHandler) Peek(ctx context.Context, request *PeekRequest) (*PeekResp
 	return &PeekResponse{WebRequest: webRequests}, err
 }
 
-func getHeadersFromHttpRequest(req *http.Request) []*Header {
+func getHeadersFromHTTPRequest(req *http.Request) []*Header {
 	headers := []*Header{}
 	if req != nil {
 		for k, v := range req.Header {
@@ -61,7 +61,7 @@ func getHeadersFromHttpRequest(req *http.Request) []*Header {
 	return headers
 }
 
-func readBodyFromHttpRequest(req *http.Request) (string, error) {
+func readBodyFromHTTPRequest(req *http.Request) (string, error) {
 	if req == nil {
 		return "", ErrNilReq
 	}
@@ -74,11 +74,11 @@ func readBodyFromHttpRequest(req *http.Request) (string, error) {
 	return string(body), nil
 }
 
-func NewWebRequestFromHttpRequest(req *http.Request, receivedAt time.Time) (*WebRequest, error) {
+func NewWebRequestFromHTTPRequest(req *http.Request, receivedAt time.Time) (*WebRequest, error) {
 	if req == nil {
 		return nil, ErrNilReq
 	}
-	body, err := readBodyFromHttpRequest(req)
+	body, err := readBodyFromHTTPRequest(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed reading request body")
 	}
@@ -88,7 +88,7 @@ func NewWebRequestFromHttpRequest(req *http.Request, receivedAt time.Time) (*Web
 	}
 	return &WebRequest{
 		ReceivedAt: ts,
-		Header:     getHeadersFromHttpRequest(req),
+		Header:     getHeadersFromHTTPRequest(req),
 		Body:       body,
 		Host:       req.Host,
 	}, nil

@@ -42,8 +42,8 @@ func Test_tlsData(t *testing.T) {
 		noTLS       bool
 		tlsCertFile string
 		tlsKeyFile  string
-		exTlsCert   []byte
-		exTlsKey    []byte
+		exTLSCert   []byte
+		exTLSKey    []byte
 		exErr       string
 	}{
 		{
@@ -59,8 +59,8 @@ func Test_tlsData(t *testing.T) {
 		{
 			tlsCertFile: testdata("server.crt"),
 			tlsKeyFile:  testdata("server.key"),
-			exTlsCert:   requireReadFile(t, testdata("server.crt")),
-			exTlsKey:    requireReadFile(t, testdata("server.key")),
+			exTLSCert:   requireReadFile(t, testdata("server.crt")),
+			exTLSKey:    requireReadFile(t, testdata("server.key")),
 		},
 		{
 			tlsCertFile: "doesnotexist",
@@ -76,14 +76,14 @@ func Test_tlsData(t *testing.T) {
 
 	for _, td := range tdd {
 		t.Run("", func(t *testing.T) {
-			gotTlsCert, gotTlsKey, gotErr := tlsData(td.noTLS, td.tlsCertFile, td.tlsKeyFile)
+			gotTLSCert, gotTLSKey, gotErr := tlsData(td.noTLS, td.tlsCertFile, td.tlsKeyFile)
 			if td.exErr == "" {
 				assert.Nil(t, gotErr)
 			} else {
 				assert.EqualError(t, gotErr, td.exErr)
 			}
-			assert.Equal(t, td.exTlsCert, gotTlsCert)
-			assert.Equal(t, td.exTlsKey, gotTlsKey)
+			assert.Equal(t, td.exTLSCert, gotTLSCert)
+			assert.Equal(t, td.exTLSKey, gotTLSKey)
 		})
 	}
 }

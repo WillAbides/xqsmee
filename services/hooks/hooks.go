@@ -83,7 +83,7 @@ func (s *Service) newQueueHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 	key := mux.Vars(r)["key"]
-	webRequest, err := queue.NewWebRequestFromHttpRequest(r, s.receivedAt())
+	webRequest, err := queue.NewWebRequestFromHTTPRequest(r, s.receivedAt())
 	if err != nil || key == "" {
 		http.Error(w, "", http.StatusBadRequest)
 		return
