@@ -40,7 +40,12 @@ func Run(ctx context.Context, config *Config) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	c := queue.NewQueueClient(conn)
 

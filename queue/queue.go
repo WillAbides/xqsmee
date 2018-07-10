@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
@@ -65,7 +66,12 @@ func readBodyFromHTTPRequest(req *http.Request) (string, error) {
 	if req == nil {
 		return "", ErrNilReq
 	}
-	defer req.Body.Close()
+	defer func() {
+		err := req.Body.Close()
+		if err != nil {
+			log.Println("failed closing request body: ", err)
+		}
+	}()
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed reading body")

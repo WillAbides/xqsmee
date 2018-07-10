@@ -2,6 +2,8 @@ package redisqueue
 
 import (
 	"context"
+	"io"
+	"log"
 	"sync"
 	"time"
 
@@ -26,7 +28,7 @@ func (q *Queue) Push(ctx context.Context, queueName string, webRequests []*queue
 		return err
 	}
 	conn := q.Pool.Get()
-	defer conn.Close()
+	defer closeOrLog(conn)
 	key := q.key(queueName)
 	for _, webRequest := range webRequests {
 		protoBytes, err := proto.Marshal(webRequest)
@@ -59,7 +61,7 @@ func listenPubSubChannel(ctx context.Context, pool *redis.Pool,
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer closeOrLog(c)
 
 	psc := redis.PubSubConn{Conn: c}
 
@@ -135,7 +137,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 		return nil, err
 	}
 	conn := q.Pool.Get()
-	defer conn.Close()
+	closeOrLog(conn)
 	key := q.key(queueName)
 
 	cancelChan := make(chan struct{})
@@ -160,7 +162,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 		}
 		var err error
 		conn := q.Pool.Get()
-		defer conn.Close()
+		closeOrLog(conn)
 		webRequest, err = lpop(key, conn)
 		if err != nil {
 			return err
@@ -195,7 +197,7 @@ func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*que
 		return response, err
 	}
 	conn := q.Pool.Get()
-	defer conn.Close()
+	closeOrLog(conn)
 	if count == 0 {
 		count = 10
 	}
@@ -238,4 +240,11 @@ func (q *Queue) validate() error {
 		return ErrNilPool
 	}
 	return nil
+}
+
+func closeOrLog(cl io.Closer) {
+	err := cl.Close()
+	if err != nil {
+		log.Println("failed to close: ", err)
+	}
 }

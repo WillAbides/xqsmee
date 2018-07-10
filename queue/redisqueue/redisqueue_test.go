@@ -41,7 +41,7 @@ func testSetup(t *testing.T) *testObjects {
 	t.Helper()
 
 	conn := redisPool.Get()
-	defer conn.Close()
+	closeOrLog(conn)
 	_, err := conn.Do("FLUSHDB")
 	require.Nil(t, err)
 
@@ -88,7 +88,7 @@ func TestQueue_Push(t *testing.T) {
 		tt := testSetup(t)
 		done := make(chan struct{})
 		psc := redis.PubSubConn{Conn: redisPool.Get()}
-		defer psc.Conn.Close()
+		defer closeOrLog(psc.Conn)
 		tt.require.Nil(psc.Subscribe("foo:bar"))
 		go func() {
 			psc.ReceiveWithTimeout(100 * time.Millisecond)
@@ -100,7 +100,7 @@ func TestQueue_Push(t *testing.T) {
 		err := tt.queue.Push(context.Background(), "bar", []*queue.WebRequest{tt.webRequest})
 		tt.assert.Nil(err)
 		conn := redisPool.Get()
-		defer conn.Close()
+		closeOrLog(conn)
 		reply, err := redis.Values(conn.Do("LRANGE", "foo:bar", 0, -1))
 		tt.assert.Nil(err)
 		tt.assert.Equal(tt.webRequestBytes, reply[0])
@@ -119,7 +119,7 @@ func TestQueue_Pop(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
 		conn := redisPool.Get()
-		defer conn.Close()
+		closeOrLog(conn)
 		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
 		tt.assert.Nil(err)
 		got, err := tt.queue.Pop(context.Background(), "bar", 100*time.Millisecond)
@@ -137,7 +137,7 @@ func TestQueue_Pop(t *testing.T) {
 			errChan <- err
 		}()
 		conn := redisPool.Get()
-		defer conn.Close()
+		closeOrLog(conn)
 		time.Sleep(10 * time.Millisecond)
 		_, err := conn.Do("RPUSH", "foo:bar", tt.webRequestBytes)
 		tt.assert.Nil(err)
@@ -160,7 +160,7 @@ func TestQueue_Peek(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
 		conn := redisPool.Get()
-		defer conn.Close()
+		closeOrLog(conn)
 		for i := 0; i < 20; i++ {
 			body := strconv.Itoa(i)
 			_, wrb := newWebRequestAndBytes(t, body, tt.timestamp)

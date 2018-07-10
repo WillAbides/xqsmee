@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"log"
 	"net"
 	"net/http"
 
@@ -62,7 +63,12 @@ func Run(config *Config) error {
 	go func() {
 		errs <- httpServer.Serve(httpListener)
 	}()
-	defer httpServer.Close()
+	defer func() {
+		err := httpServer.Close()
+		if err != nil {
+			log.Println("failed closing httpServer: ", err)
+		}
+	}()
 
 	grpcServer := grpc.NewServer()
 	grpcHandler := queue.NewGRPCHandler(config.Queue)
