@@ -12,14 +12,15 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+//Config is the config for running a client
 type Config struct {
 	Host      string
+	QueueName string
+	Separator string
 	Port      int
 	Insecure  bool
-	QueueName string
-	Stdout    io.Writer
-	Separator string
 	UseTLS    bool
+	Stdout    io.Writer
 }
 
 func dialGRPC(ctx context.Context, config *Config) (*grpc.ClientConn, error) {
@@ -35,12 +36,18 @@ func dialGRPC(ctx context.Context, config *Config) (*grpc.ClientConn, error) {
 	return grpc.DialContext(ctx, addr, grpc.WithInsecure())
 }
 
+//Run runs a client
 func Run(ctx context.Context, config *Config) error {
 	conn, err := dialGRPC(ctx, config)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	c := queue.NewQueueClient(conn)
 

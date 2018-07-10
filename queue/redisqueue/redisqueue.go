@@ -2,6 +2,8 @@ package redisqueue
 
 import (
 	"context"
+	"io"
+	"log"
 	"sync"
 	"time"
 
@@ -12,21 +14,23 @@ import (
 )
 
 var (
-	ErrEmptyPrefix = errors.New("prefix is empty")
-	ErrNilPool     = errors.New("pool is nil")
+	errEmptyPrefix = errors.New("prefix is empty")
+	errNilPool     = errors.New("pool is nil")
 )
 
+//Queue is a queue
 type Queue struct {
 	Prefix string
 	Pool   *redis.Pool
 }
 
+//Push adds to the queue
 func (q *Queue) Push(ctx context.Context, queueName string, webRequests []*queue.WebRequest) error {
 	if err := q.validate(); err != nil {
 		return err
 	}
 	conn := q.Pool.Get()
-	defer conn.Close()
+	defer closeOrLog(conn)
 	key := q.key(queueName)
 	for _, webRequest := range webRequests {
 		protoBytes, err := proto.Marshal(webRequest)
@@ -59,7 +63,7 @@ func listenPubSubChannel(ctx context.Context, pool *redis.Pool,
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer closeOrLog(c)
 
 	psc := redis.PubSubConn{Conn: c}
 
@@ -118,12 +122,13 @@ loop:
 	}
 
 	// Signal the receiving goroutine to exit by unsubscribing
-	_ = psc.Unsubscribe(channel)
+	_ = psc.Unsubscribe(channel) //nolint: gas
 
 	// Wait for goroutine to complete.
 	return <-done
 }
 
+//Pop pops the next item off the queue
 func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration) (*queue.WebRequest, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -135,7 +140,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 		return nil, err
 	}
 	conn := q.Pool.Get()
-	defer conn.Close()
+	defer closeOrLog(conn)
 	key := q.key(queueName)
 
 	cancelChan := make(chan struct{})
@@ -160,7 +165,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 		}
 		var err error
 		conn := q.Pool.Get()
-		defer conn.Close()
+		defer closeOrLog(conn)
 		webRequest, err = lpop(key, conn)
 		if err != nil {
 			return err
@@ -189,41 +194,14 @@ func lpop(key string, conn redis.Conn) (*queue.WebRequest, error) {
 	return webRequest, err
 }
 
-func (q *Queue) blpop(ctx context.Context, queueName string, timeout int64) (*queue.WebRequest, error) {
-	if err := q.validate(); err != nil {
-		return nil, err
-	}
-	conn := q.Pool.Get()
-	defer conn.Close()
-	key := q.key(queueName)
-	values, err := redis.ByteSlices(conn.Do("BLPOP", key, timeout))
-	switch err {
-	case nil:
-	case redis.ErrNil:
-		return nil, nil
-	default:
-		return nil, err
-	}
-	if len(values) < 2 {
-		return nil, nil
-	}
-	webRequestBytes := values[1]
-	webRequest := new(queue.WebRequest)
-	err = proto.Unmarshal(webRequestBytes, webRequest)
-	return webRequest, err
-}
-
-func (q *Queue) Pop2(ctx context.Context, queueName string, timeout int64) (*queue.WebRequest, error) {
-	return q.blpop(ctx, queueName, timeout)
-}
-
+//Peek show the next few items in the queue
 func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*queue.WebRequest, error) {
 	response := make([]*queue.WebRequest, 0)
 	if err := q.validate(); err != nil {
 		return response, err
 	}
 	conn := q.Pool.Get()
-	defer conn.Close()
+	defer closeOrLog(conn)
 	if count == 0 {
 		count = 10
 	}
@@ -247,6 +225,7 @@ func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*que
 	return response, nil
 }
 
+//New returns a new Queue
 func New(prefix string, pool *redis.Pool) *Queue {
 	return &Queue{
 		Prefix: prefix,
@@ -260,10 +239,17 @@ func (q *Queue) key(queueName string) string {
 
 func (q *Queue) validate() error {
 	if q.Prefix == "" {
-		return ErrEmptyPrefix
+		return errEmptyPrefix
 	}
 	if q.Pool == nil {
-		return ErrNilPool
+		return errNilPool
 	}
 	return nil
+}
+
+func closeOrLog(cl io.Closer) {
+	err := cl.Close()
+	if err != nil {
+		log.Println("failed to close: ", err)
+	}
 }

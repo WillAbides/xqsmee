@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
@@ -16,42 +17,47 @@ import (
 //go:generate mockgen -destination mockqueue/mockqueue.go -package mockqueue -source=queue.go
 
 var (
-	ErrInvalidArgument = errors.New("invalid argument")
-	ErrNilReq          = errors.Wrap(ErrInvalidArgument, "req is nil")
+	errInvalidArgument = errors.New("invalid argument")
+	errNilReq          = errors.Wrap(errInvalidArgument, "req is nil")
 )
 
 type (
+	//Queue is a queue
 	Queue interface {
 		Peek(context.Context, string, int64) ([]*WebRequest, error)
 		Pop(context.Context, string, time.Duration) (*WebRequest, error)
 		Push(context.Context, string, []*WebRequest) error
 	}
 
+	//GRPCHandler handle grpc requests
 	GRPCHandler struct {
 		q Queue
 	}
 )
 
+//NewGRPCHandler returns a new GRPCHandler
 func NewGRPCHandler(q Queue) *GRPCHandler {
 	return &GRPCHandler{q: q}
 }
 
+//Pop pops an item off the queue
 func (g *GRPCHandler) Pop(ctx context.Context, request *PopRequest) (*PopResponse, error) {
 	var duration time.Duration
 	timeout := request.GetTimeout()
 	if timeout != nil {
-		duration = time.Duration(time.Duration(timeout.GetNanos()) + time.Duration(timeout.GetSeconds())*time.Second)
+		duration = time.Duration(timeout.GetNanos()) + time.Duration(timeout.GetSeconds())*time.Second
 	}
 	webRequest, err := g.q.Pop(ctx, request.GetQueueName(), duration)
 	return &PopResponse{WebRequest: webRequest}, err
 }
 
+//Peek shows the next few items in the queue
 func (g *GRPCHandler) Peek(ctx context.Context, request *PeekRequest) (*PeekResponse, error) {
 	webRequests, err := g.q.Peek(ctx, request.GetQueueName(), request.GetCount())
 	return &PeekResponse{WebRequest: webRequests}, err
 }
 
-func getHeadersFromHttpRequest(req *http.Request) []*Header {
+func getHeadersFromHTTPRequest(req *http.Request) []*Header {
 	headers := []*Header{}
 	if req != nil {
 		for k, v := range req.Header {
@@ -61,11 +67,16 @@ func getHeadersFromHttpRequest(req *http.Request) []*Header {
 	return headers
 }
 
-func readBodyFromHttpRequest(req *http.Request) (string, error) {
+func readBodyFromHTTPRequest(req *http.Request) (string, error) {
 	if req == nil {
-		return "", ErrNilReq
+		return "", errNilReq
 	}
-	defer req.Body.Close()
+	defer func() {
+		err := req.Body.Close()
+		if err != nil {
+			log.Println("failed closing request body: ", err)
+		}
+	}()
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed reading body")
@@ -74,11 +85,12 @@ func readBodyFromHttpRequest(req *http.Request) (string, error) {
 	return string(body), nil
 }
 
-func NewWebRequestFromHttpRequest(req *http.Request, receivedAt time.Time) (*WebRequest, error) {
+//NewWebRequestFromHTTPRequest is a helper to build a WebRequest from an HTTP request
+func NewWebRequestFromHTTPRequest(req *http.Request, receivedAt time.Time) (*WebRequest, error) {
 	if req == nil {
-		return nil, ErrNilReq
+		return nil, errNilReq
 	}
-	body, err := readBodyFromHttpRequest(req)
+	body, err := readBodyFromHTTPRequest(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed reading request body")
 	}
@@ -88,12 +100,13 @@ func NewWebRequestFromHttpRequest(req *http.Request, receivedAt time.Time) (*Web
 	}
 	return &WebRequest{
 		ReceivedAt: ts,
-		Header:     getHeadersFromHttpRequest(req),
+		Header:     getHeadersFromHTTPRequest(req),
 		Body:       body,
 		Host:       req.Host,
 	}, nil
 }
 
+// MarshalJSON creates a json representation of q WebRequest
 func (w *WebRequest) MarshalJSON() ([]byte, error) {
 	s, err := new(jsonpb.Marshaler).MarshalToString(w)
 	if err != nil {
@@ -102,6 +115,7 @@ func (w *WebRequest) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
+//UnmarshalJSON builds a WebRequest from JSON
 func (w *WebRequest) UnmarshalJSON(src []byte) error {
 	return jsonpb.UnmarshalString(string(src), w)
 }
