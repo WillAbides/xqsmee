@@ -140,7 +140,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 		return nil, err
 	}
 	conn := q.Pool.Get()
-	closeOrLog(conn)
+	defer closeOrLog(conn)
 	key := q.key(queueName)
 
 	cancelChan := make(chan struct{})
@@ -165,7 +165,7 @@ func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration
 		}
 		var err error
 		conn := q.Pool.Get()
-		closeOrLog(conn)
+		defer closeOrLog(conn)
 		webRequest, err = lpop(key, conn)
 		if err != nil {
 			return err
@@ -201,7 +201,7 @@ func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*que
 		return response, err
 	}
 	conn := q.Pool.Get()
-	closeOrLog(conn)
+	defer closeOrLog(conn)
 	if count == 0 {
 		count = 10
 	}
