@@ -14,12 +14,12 @@ import (
 
 type Config struct {
 	Host      string
+	QueueName string
+	Separator string
 	Port      int
 	Insecure  bool
-	QueueName string
-	Stdout    io.Writer
-	Separator string
 	UseTLS    bool
+	Stdout    io.Writer
 }
 
 func dialGRPC(ctx context.Context, config *Config) (*grpc.ClientConn, error) {

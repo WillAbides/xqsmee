@@ -58,9 +58,9 @@ func init() {
 type clientCmdCfg struct {
 	QueueName  string `mapstructure:"queue"`
 	ServerHost string `mapstructure:"server"`
+	Separator  string `mapstructure:"ifs"`
 	ServerPort int    `mapstructure:"port"`
 	Insecure   bool
-	Separator  string `mapstructure:"ifs"`
 	NoTLS      bool   `mapstructure:"no-tls"`
 }
 
