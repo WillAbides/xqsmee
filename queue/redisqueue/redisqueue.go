@@ -2,12 +2,13 @@ package redisqueue
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/golang/protobuf/proto"
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
-	"sync"
-	"time"
 )
 
 var (

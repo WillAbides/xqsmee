@@ -1,6 +1,12 @@
 package hooks
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/WillAbides/idcheck"
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/WillAbides/xqsmee/queue/mockqueue"
@@ -9,11 +15,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
 )
 
 type testObjects struct {

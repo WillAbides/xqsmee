@@ -35,7 +35,7 @@ func (config *Config) buildListeners() (httpListener, grpcListener net.Listener,
 
 	if config.UseTLS {
 		var cert tls.Certificate
-		cert, err = tls.X509KeyPair([]byte(config.TLSCertPEMBlock), []byte(config.TLSKeyPEMBlock))
+		cert, err = tls.X509KeyPair(config.TLSCertPEMBlock, config.TLSKeyPEMBlock)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed creating tls certificate from key pair")
 		}

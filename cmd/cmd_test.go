@@ -3,11 +3,12 @@ package cmd
 import (
 	"testing"
 
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/WillAbides/xqsmee/queue/redisqueue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"path/filepath"
 )
 
 func requireReadFile(t *testing.T, filename string) []byte {

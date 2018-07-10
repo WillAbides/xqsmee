@@ -5,10 +5,11 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/WillAbides/xqsmee/queue"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"io"
 )
 
 type Config struct {

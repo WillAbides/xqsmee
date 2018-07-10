@@ -2,14 +2,15 @@ package queue_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/WillAbides/xqsmee/queue"
 	"github.com/WillAbides/xqsmee/queue/mockqueue"
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 type testObjects struct {

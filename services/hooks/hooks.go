@@ -112,11 +112,10 @@ func (s *Service) peekHandler(w http.ResponseWriter, r *http.Request) {
 	if webRequests == nil {
 		w.WriteHeader(http.StatusNoContent)
 		return
-	} else {
-		err = json.NewEncoder(w).Encode(webRequests)
-		if err != nil {
-			http.Error(w, "failed encoding json", http.StatusInternalServerError)
-			return
-		}
+	}
+	err = json.NewEncoder(w).Encode(webRequests)
+	if err != nil {
+		http.Error(w, "failed encoding json", http.StatusInternalServerError)
+		return
 	}
 }
