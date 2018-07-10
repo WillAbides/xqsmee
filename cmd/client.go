@@ -61,7 +61,7 @@ type clientCmdCfg struct {
 	Separator  string `mapstructure:"ifs"`
 	ServerPort int    `mapstructure:"port"`
 	Insecure   bool
-	NoTLS      bool   `mapstructure:"no-tls"`
+	NoTLS      bool `mapstructure:"no-tls"`
 }
 
 func (c *clientCmdCfg) clientConfig() *client.Config {
