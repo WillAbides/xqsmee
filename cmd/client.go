@@ -76,6 +76,7 @@ func (c *clientCmdCfg) clientConfig() *client.Config {
 	}
 }
 
+//Execute makes client go
 func Execute() {
 	if err := clientCmd.Execute(); err != nil {
 		fmt.Println(err)

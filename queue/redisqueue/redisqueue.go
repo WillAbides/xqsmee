@@ -14,15 +14,17 @@ import (
 )
 
 var (
-	ErrEmptyPrefix = errors.New("prefix is empty")
-	ErrNilPool     = errors.New("pool is nil")
+	errEmptyPrefix = errors.New("prefix is empty")
+	errNilPool     = errors.New("pool is nil")
 )
 
+//Queue is a queue
 type Queue struct {
 	Prefix string
 	Pool   *redis.Pool
 }
 
+//Push adds to the queue
 func (q *Queue) Push(ctx context.Context, queueName string, webRequests []*queue.WebRequest) error {
 	if err := q.validate(); err != nil {
 		return err
@@ -126,6 +128,7 @@ loop:
 	return <-done
 }
 
+//Pop pops the next item off the queue
 func (q *Queue) Pop(ctx context.Context, queueName string, timeout time.Duration) (*queue.WebRequest, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -191,6 +194,7 @@ func lpop(key string, conn redis.Conn) (*queue.WebRequest, error) {
 	return webRequest, err
 }
 
+//Peek show the next few items in the queue
 func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*queue.WebRequest, error) {
 	response := make([]*queue.WebRequest, 0)
 	if err := q.validate(); err != nil {
@@ -221,6 +225,7 @@ func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*que
 	return response, nil
 }
 
+//New returns a new Queue
 func New(prefix string, pool *redis.Pool) *Queue {
 	return &Queue{
 		Prefix: prefix,
@@ -234,10 +239,10 @@ func (q *Queue) key(queueName string) string {
 
 func (q *Queue) validate() error {
 	if q.Prefix == "" {
-		return ErrEmptyPrefix
+		return errEmptyPrefix
 	}
 	if q.Pool == nil {
-		return ErrNilPool
+		return errNilPool
 	}
 	return nil
 }

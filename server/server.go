@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 )
 
+//Config is a server configuration
 type Config struct {
 	Queue           queue.Queue
 	Httpaddr        string
@@ -47,6 +48,7 @@ func (config *Config) buildListeners() (httpListener, grpcListener net.Listener,
 	return httpListener, grpcListener, err
 }
 
+//Run runs a server
 func Run(config *Config) error {
 	httpListener, grpcListener, err := config.buildListeners()
 	if err != nil {

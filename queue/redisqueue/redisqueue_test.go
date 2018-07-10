@@ -111,7 +111,7 @@ func TestQueue_Push(t *testing.T) {
 		tt := testSetup(t)
 		tt.queue.Prefix = ""
 		err := tt.queue.Push(context.Background(), "bar", []*queue.WebRequest{tt.webRequest})
-		tt.assert.Equal(ErrEmptyPrefix, err)
+		tt.assert.Equal(errEmptyPrefix, err)
 	})
 }
 
@@ -193,12 +193,12 @@ func TestQueue_validate(t *testing.T) {
 	t.Run("checks for empty prefix", func(t *testing.T) {
 		tt := testSetup(t)
 		tt.queue.Prefix = ""
-		tt.assert.Equal(ErrEmptyPrefix, tt.queue.validate())
+		tt.assert.Equal(errEmptyPrefix, tt.queue.validate())
 	})
 
 	t.Run("checks for nil pool", func(t *testing.T) {
 		tt := testSetup(t)
 		tt.queue.Pool = nil
-		tt.assert.Equal(ErrNilPool, tt.queue.validate())
+		tt.assert.Equal(errNilPool, tt.queue.validate())
 	})
 }

@@ -12,11 +12,13 @@ import (
 )
 
 type (
+	//IDChecker checks queue IDs
 	IDChecker interface {
 		NewID() (*idcheck.ID, error)
 		ValidID(*idcheck.ID) bool
 	}
 
+	//Service is a hooks service
 	Service struct {
 		queue              queue.Queue
 		receivedAtOverride *time.Time
@@ -24,6 +26,7 @@ type (
 	}
 )
 
+//New returns a new hooks service
 func New(queue queue.Queue, idChecker IDChecker) *Service {
 	return &Service{
 		idChecker: idChecker,
@@ -51,6 +54,7 @@ func (s *Service) idCheckMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+//Router is the mux router
 func (s *Service) Router() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/_ping", s.pingHandler)

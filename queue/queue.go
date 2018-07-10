@@ -17,26 +17,30 @@ import (
 //go:generate mockgen -destination mockqueue/mockqueue.go -package mockqueue -source=queue.go
 
 var (
-	ErrInvalidArgument = errors.New("invalid argument")
-	ErrNilReq          = errors.Wrap(ErrInvalidArgument, "req is nil")
+	errInvalidArgument = errors.New("invalid argument")
+	errNilReq          = errors.Wrap(errInvalidArgument, "req is nil")
 )
 
 type (
+	//Queue is a queue
 	Queue interface {
 		Peek(context.Context, string, int64) ([]*WebRequest, error)
 		Pop(context.Context, string, time.Duration) (*WebRequest, error)
 		Push(context.Context, string, []*WebRequest) error
 	}
 
+	//GRPCHandler handle grpc requests
 	GRPCHandler struct {
 		q Queue
 	}
 )
 
+//NewGRPCHandler returns a new GRPCHandler
 func NewGRPCHandler(q Queue) *GRPCHandler {
 	return &GRPCHandler{q: q}
 }
 
+//Pop pops an item off the queue
 func (g *GRPCHandler) Pop(ctx context.Context, request *PopRequest) (*PopResponse, error) {
 	var duration time.Duration
 	timeout := request.GetTimeout()
@@ -47,6 +51,7 @@ func (g *GRPCHandler) Pop(ctx context.Context, request *PopRequest) (*PopRespons
 	return &PopResponse{WebRequest: webRequest}, err
 }
 
+//Peek shows the next few items in the queue
 func (g *GRPCHandler) Peek(ctx context.Context, request *PeekRequest) (*PeekResponse, error) {
 	webRequests, err := g.q.Peek(ctx, request.GetQueueName(), request.GetCount())
 	return &PeekResponse{WebRequest: webRequests}, err
@@ -64,7 +69,7 @@ func getHeadersFromHTTPRequest(req *http.Request) []*Header {
 
 func readBodyFromHTTPRequest(req *http.Request) (string, error) {
 	if req == nil {
-		return "", ErrNilReq
+		return "", errNilReq
 	}
 	defer func() {
 		err := req.Body.Close()
@@ -80,9 +85,10 @@ func readBodyFromHTTPRequest(req *http.Request) (string, error) {
 	return string(body), nil
 }
 
+//NewWebRequestFromHTTPRequest is a helper to build a WebRequest from an HTTP request
 func NewWebRequestFromHTTPRequest(req *http.Request, receivedAt time.Time) (*WebRequest, error) {
 	if req == nil {
-		return nil, ErrNilReq
+		return nil, errNilReq
 	}
 	body, err := readBodyFromHTTPRequest(req)
 	if err != nil {
@@ -100,6 +106,7 @@ func NewWebRequestFromHTTPRequest(req *http.Request, receivedAt time.Time) (*Web
 	}, nil
 }
 
+// MarshalJSON creates a json representation of q WebRequest
 func (w *WebRequest) MarshalJSON() ([]byte, error) {
 	s, err := new(jsonpb.Marshaler).MarshalToString(w)
 	if err != nil {
@@ -108,6 +115,7 @@ func (w *WebRequest) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
+//UnmarshalJSON builds a WebRequest from JSON
 func (w *WebRequest) UnmarshalJSON(src []byte) error {
 	return jsonpb.UnmarshalString(string(src), w)
 }
