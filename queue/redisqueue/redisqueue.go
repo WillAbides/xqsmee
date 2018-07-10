@@ -189,34 +189,6 @@ func lpop(key string, conn redis.Conn) (*queue.WebRequest, error) {
 	return webRequest, err
 }
 
-func (q *Queue) blpop(ctx context.Context, queueName string, timeout int64) (*queue.WebRequest, error) {
-	if err := q.validate(); err != nil {
-		return nil, err
-	}
-	conn := q.Pool.Get()
-	defer conn.Close()
-	key := q.key(queueName)
-	values, err := redis.ByteSlices(conn.Do("BLPOP", key, timeout))
-	switch err {
-	case nil:
-	case redis.ErrNil:
-		return nil, nil
-	default:
-		return nil, err
-	}
-	if len(values) < 2 {
-		return nil, nil
-	}
-	webRequestBytes := values[1]
-	webRequest := new(queue.WebRequest)
-	err = proto.Unmarshal(webRequestBytes, webRequest)
-	return webRequest, err
-}
-
-func (q *Queue) Pop2(ctx context.Context, queueName string, timeout int64) (*queue.WebRequest, error) {
-	return q.blpop(ctx, queueName, timeout)
-}
-
 func (q *Queue) Peek(ctx context.Context, queueName string, count int64) ([]*queue.WebRequest, error) {
 	response := make([]*queue.WebRequest, 0)
 	if err := q.validate(); err != nil {
