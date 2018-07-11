@@ -58,10 +58,10 @@ func init() {
 type clientCmdCfg struct {
 	QueueName  string `mapstructure:"queue"`
 	ServerHost string `mapstructure:"server"`
+	Separator  string `mapstructure:"ifs"`
 	ServerPort int    `mapstructure:"port"`
 	Insecure   bool
-	Separator  string `mapstructure:"ifs"`
-	NoTLS      bool   `mapstructure:"no-tls"`
+	NoTLS      bool `mapstructure:"no-tls"`
 }
 
 func (c *clientCmdCfg) clientConfig() *client.Config {
@@ -76,6 +76,7 @@ func (c *clientCmdCfg) clientConfig() *client.Config {
 	}
 }
 
+//Execute makes client go
 func Execute() {
 	if err := clientCmd.Execute(); err != nil {
 		fmt.Println(err)

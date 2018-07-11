@@ -73,11 +73,11 @@ func tlsData(noTLS bool, tlsCertFile, tlsKeyFile string) (tlsCert, tlsKey []byte
 	if tlsKeyFile == "" || tlsCertFile == "" {
 		return nil, nil, errors.New("you must specify both --tlskey and --tlscert unless --no-tls is set")
 	}
-	tlsCert, err = ioutil.ReadFile(tlsCertFile)
+	tlsCert, err = ioutil.ReadFile(tlsCertFile) //nolint: gas
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed reading tls certificate file")
 	}
-	tlsKey, err = ioutil.ReadFile(tlsKeyFile)
+	tlsKey, err = ioutil.ReadFile(tlsKeyFile) //nolint: gas
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed reading tls key file")
 	}
