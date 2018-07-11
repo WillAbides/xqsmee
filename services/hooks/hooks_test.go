@@ -2,7 +2,7 @@ package hooks
 
 import (
 	"encoding/json"
-		"net/http"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -83,13 +83,13 @@ func TestService_peekHandler(t *testing.T) {
 				Header:     []*queue.Header{},
 			})
 		}
-		exJson, err := json.Marshal(ret)
+		exJSON, err := json.Marshal(ret)
 		tt.require.Nil(err)
 		tt.queue.EXPECT().Peek(gomock.Any(), testQueue, int64(0)).Return(ret, nil)
 		res := tt.doRequest(http.MethodGet, "", "/q/"+testQueue)
 		tt.assert.Equal(http.StatusOK, res.Code)
 		body := strings.TrimSpace(res.Body.String())
-		tt.assert.Equal(string(exJson), body)
+		tt.assert.Equal(string(exJSON), body)
 	})
 
 	t.Run("subqueue", func(t *testing.T) {
@@ -103,13 +103,13 @@ func TestService_peekHandler(t *testing.T) {
 				Header:     []*queue.Header{},
 			})
 		}
-		exJson, err := json.Marshal(ret)
+		exJSON, err := json.Marshal(ret)
 		tt.require.Nil(err)
-		tt.queue.EXPECT().Peek(gomock.Any(), testQueue + "/subqueue", int64(0)).Return(ret, nil)
-		res := tt.doRequest(http.MethodGet, "", "/q/"+testQueue + "/subqueue")
+		tt.queue.EXPECT().Peek(gomock.Any(), testQueue+"/subqueue", int64(0)).Return(ret, nil)
+		res := tt.doRequest(http.MethodGet, "", "/q/"+testQueue+"/subqueue")
 		tt.assert.Equal(http.StatusOK, res.Code)
 		body := strings.TrimSpace(res.Body.String())
-		tt.assert.Equal(string(exJson), body)
+		tt.assert.Equal(string(exJSON), body)
 	})
 }
 
@@ -137,7 +137,7 @@ func TestService_postHandler(t *testing.T) {
 			ReceivedAt: tt.timestamp,
 			Header:     []*queue.Header{},
 		}
-		tt.queue.EXPECT().Push(gomock.Any(), testQueue + "/foo", []*queue.WebRequest{exWebRequest}).Return(nil)
+		tt.queue.EXPECT().Push(gomock.Any(), testQueue+"/foo", []*queue.WebRequest{exWebRequest}).Return(nil)
 		res := tt.doRequest(http.MethodPost, "hi", "/q/"+testQueue+"/foo")
 		tt.assert.Equal(http.StatusOK, res.Code)
 	})
