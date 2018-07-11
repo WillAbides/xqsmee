@@ -1,7 +1,8 @@
 package hooks
 
 import (
-	"net/http"
+	"encoding/json"
+		"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -70,6 +71,48 @@ func TestService_pingHandler(t *testing.T) {
 	})
 }
 
+func TestService_peekHandler(t *testing.T) {
+	t.Run("works", func(t *testing.T) {
+		tt := testSetup(t)
+		defer tt.teardown()
+		ret := []*queue.WebRequest{}
+		for i := 0; i < 10; i++ {
+			ret = append(ret, &queue.WebRequest{
+				Body:       "hi",
+				ReceivedAt: tt.timestamp,
+				Header:     []*queue.Header{},
+			})
+		}
+		exJson, err := json.Marshal(ret)
+		tt.require.Nil(err)
+		tt.queue.EXPECT().Peek(gomock.Any(), testQueue, int64(0)).Return(ret, nil)
+		res := tt.doRequest(http.MethodGet, "", "/q/"+testQueue)
+		tt.assert.Equal(http.StatusOK, res.Code)
+		body := strings.TrimSpace(res.Body.String())
+		tt.assert.Equal(string(exJson), body)
+	})
+
+	t.Run("subqueue", func(t *testing.T) {
+		tt := testSetup(t)
+		defer tt.teardown()
+		ret := []*queue.WebRequest{}
+		for i := 0; i < 10; i++ {
+			ret = append(ret, &queue.WebRequest{
+				Body:       "hi",
+				ReceivedAt: tt.timestamp,
+				Header:     []*queue.Header{},
+			})
+		}
+		exJson, err := json.Marshal(ret)
+		tt.require.Nil(err)
+		tt.queue.EXPECT().Peek(gomock.Any(), testQueue + "/subqueue", int64(0)).Return(ret, nil)
+		res := tt.doRequest(http.MethodGet, "", "/q/"+testQueue + "/subqueue")
+		tt.assert.Equal(http.StatusOK, res.Code)
+		body := strings.TrimSpace(res.Body.String())
+		tt.assert.Equal(string(exJson), body)
+	})
+}
+
 func TestService_postHandler(t *testing.T) {
 	t.Run("works", func(t *testing.T) {
 		tt := testSetup(t)
@@ -82,6 +125,20 @@ func TestService_postHandler(t *testing.T) {
 		}
 		tt.queue.EXPECT().Push(gomock.Any(), testQueue, []*queue.WebRequest{exWebRequest}).Return(nil)
 		res := tt.doRequest(http.MethodPost, "hi", "/q/"+testQueue)
+		tt.assert.Equal(http.StatusOK, res.Code)
+	})
+
+	t.Run("subqueue", func(t *testing.T) {
+		tt := testSetup(t)
+		defer tt.teardown()
+		tt.service.receivedAtOverride = tt.now
+		exWebRequest := &queue.WebRequest{
+			Body:       "hi",
+			ReceivedAt: tt.timestamp,
+			Header:     []*queue.Header{},
+		}
+		tt.queue.EXPECT().Push(gomock.Any(), testQueue + "/foo", []*queue.WebRequest{exWebRequest}).Return(nil)
+		res := tt.doRequest(http.MethodPost, "hi", "/q/"+testQueue+"/foo")
 		tt.assert.Equal(http.StatusOK, res.Code)
 	})
 

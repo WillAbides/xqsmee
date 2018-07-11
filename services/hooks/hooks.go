@@ -61,6 +61,9 @@ func (s *Service) Router() *mux.Router {
 
 	sr.HandleFunc("", s.postHandler).Methods(http.MethodPost)
 	sr.HandleFunc("", s.peekHandler).Methods(http.MethodGet)
+	sr.HandleFunc("/{subkey}", s.postHandler).Methods(http.MethodPost)
+	sr.HandleFunc("/{subkey}", s.peekHandler).Methods(http.MethodGet)
+
 	sr.Use(s.idCheckMiddleware)
 	return r
 }
@@ -82,7 +85,13 @@ func (s *Service) newQueueHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
-	key := mux.Vars(r)["key"]
+	vars := mux.Vars(r)
+	key := vars["key"]
+	subkey := vars["subkey"]
+	if subkey != "" {
+		key = key + "/" + subkey
+	}
+
 	webRequest, err := queue.NewWebRequestFromHttpRequest(r, s.receivedAt())
 	if err != nil || key == "" {
 		http.Error(w, "", http.StatusBadRequest)
@@ -97,10 +106,11 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) peekHandler(w http.ResponseWriter, r *http.Request) {
-	key := mux.Vars(r)["key"]
-	if key == "" {
-		http.Error(w, "", http.StatusBadRequest)
-		return
+	vars := mux.Vars(r)
+	key := vars["key"]
+	subkey := vars["subkey"]
+	if subkey != "" {
+		key = key + "/" + subkey
 	}
 
 	webRequests, err := s.queue.Peek(r.Context(), key, 0)
