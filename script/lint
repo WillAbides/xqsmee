@@ -4,6 +4,6 @@ set -e
 ROOTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 cd "$ROOTPATH"
 
-GOBIN="$ROOTPATH/bin" go install ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint/
+[ -f "script/bin/golangci-lint" ] || script/bootstrap
 
-bin/golangci-lint run $@
+script/bin/golangci-lint run $@

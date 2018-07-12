@@ -1,0 +1,9 @@
+required = [
+  "github.com/golangci/golangci-lint/cmd/golangci-lint",
+  "github.com/golang/protobuf/protoc-gen-go",
+  "github.com/golang/mock/mockgen"
+]
+
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  branch = "master"
