@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -e
+
+ROOTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+cd "$ROOTPATH"
+
+mkdir -p tmp
+
+if [[ ! -x "$(which go)" ]]; then
+  echo >&2 "this requires an intallation of Go to build."
+  exit 1
+fi
+
+if [[ ! -x "$(which dep)" ]]; then
+  echo >&2 "this requires an intallation of dep to build."
+  exit 1
+fi
+
+if [[ ! -x "$(which protoc)" ]]; then
+  echo >&2 "this requires an intallation of protoc to build."
+  exit 1
+fi
+
+(
+  cd "$ROOTPATH/script"
+  dep ensure --vendor-only
+  export GOBIN="$ROOTPATH/script/bin"
+  go install ./vendor/github.com/golang/protobuf/protoc-gen-go
+  go install ./vendor/github.com/golang/mock/mockgen
+  go install ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint/
+)

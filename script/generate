@@ -4,10 +4,14 @@ set -e
 ROOTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 cd "$ROOTPATH"
 
-GOBIN="$ROOTPATH/bin" go install ./vendor/github.com/golang/protobuf/protoc-gen-go
-GOBIN="$ROOTPATH/bin" go install ./vendor/github.com/golang/mock/mockgen
+GOBIN="$ROOTPATH/script/bin" go install ./script/vendor/github.com/golang/protobuf/protoc-gen-go
+GOBIN="$ROOTPATH/script/bin" go install ./script/vendor/github.com/golang/mock/mockgen
+
+for binfile in golangci-lint protoc-gen-go; do
+  [ -f "script/bin/$binfile" ] || script/bootstrap
+done
 
 test $# -gt 0 || set -- ./...
 
-PATH="$ROOTPATH/bin:$PATH" go generate $@
+PATH="$ROOTPATH/script/bin:$PATH" go generate $@
 go fix ./...
