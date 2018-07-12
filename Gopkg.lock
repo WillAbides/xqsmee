@@ -24,6 +24,12 @@
   revision = "e4b661bc3f00b6c0772b5a14b2fe134bc164c5a7"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/alecthomas/kong"
+  packages = ["."]
+  revision = "99ff32a85f460195c7d25c05c3e103199fc1558d"
+
+[[projects]]
   name = "github.com/client9/misspell"
   packages = ["."]
   revision = "b90dc15cfd220ecf8bbc9043ecb928cef381f011"
@@ -548,6 +554,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "90520f5f40d72a1a66991549662a2dbb34552b6495cc3990ea3cbd26e4c88b20"
+  inputs-digest = "58d9dbb3e677f0fc000392a105120631607b2be6401054140260c5bd649d0de1"
   solver-name = "gps-cdcl"
   solver-version = 1

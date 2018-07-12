@@ -1,117 +1,71 @@
 package cmd
 
 import (
+	"errors"
 	"io/ioutil"
-	"log"
+	"net/url"
 	"time"
 
 	"github.com/WillAbides/xqsmee/queue/redisqueue"
 	"github.com/WillAbides/xqsmee/server"
 	"github.com/gomodule/redigo/redis"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-var (
-	srvCfg *server.Config
-
-	serverCmd = &cobra.Command{
-		Use:   "server",
-		Short: "Run xqsmee server",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			cc := new(srvCmdCfg)
-			err := viper.Unmarshal(cc)
-			if err != nil {
-				return err
-			}
-			srvCfg, err = cc.serverConfig()
-			return err
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			err := server.Run(srvCfg)
-			if err != nil {
-				log.Fatal(err)
-			}
-		},
-	}
-)
-
-func init() {
-	clientCmd.AddCommand(serverCmd)
-
-	flags := serverCmd.Flags()
-	flags.StringP("redisurl", "r", "redis://:6379", "redis url")
-	flags.Int("maxactive", 100, "max number of active redis connections")
-	flags.String("httpaddr", ":8443", "tcp address to listen on")
-	flags.String("grpcaddr", ":9443", "tcp address to listen on")
-	flags.String("redisprefix", "xqsmee", "prefix for redis key")
-	flags.String("tlskey", "", "file containing a tls key")
-	flags.String("tlscert", "", "file containing a tls certificate")
-	flags.Bool("no-tls", false, "don't use tls (serve unencrypted http and grpc)")
-	err := viper.BindPFlags(flags)
-	if err != nil {
-		panic(err)
-	}
+type serverCmd struct {
+	Redisurl     *url.URL `default:"redis://:6379" short:"r" help:"redis url" env:"XQSMEE_REDISURL"`
+	Maxactive    int      `default:"100" help:"max number of active redis connections" env:"XQSMEE_MAXACTIVE"`
+	NoTLS        bool     `help:"don't use tls (serve unencrypted http and grpc)" env:"XQSMEE_NOTLS"`
+	Httpaddr     string   `default:":8443" help:"tcp address for http connections" env:"XQSMEE_HTTPADDR"`
+	Grpcaddr     string   `default:":9443" help:"tcp address for grpc connections" env:"XQSMEE_GRPCADDR"`
+	Redisprefix  string   `default:"xqsmee" help:"prefix for redis keys" env:"XQSMEE_REDISPREFIX"`
+	Tlskey       string   `type:"existingfile" help:"file containing a tls key" env:"XQSMEE_TLSKEY"`
+	Tlscert      string   `type:"existingfile" help:"file containing a tls certificate" env:"XQSMEE_TLSCERT"`
+	tlsKeyBlock  []byte
+	tlsCertBlock []byte
 }
 
-type srvCmdCfg struct {
-	RedisURL    string
-	MaxActive   int
-	Httpaddr    string
-	Grpcaddr    string
-	RedisPrefix string
-	TLSCert     string
-	TLSKey      string
-	NoTLS       bool `mapstructure:"no-tls"`
-}
-
-func tlsData(noTLS bool, tlsCertFile, tlsKeyFile string) (tlsCert, tlsKey []byte, err error) {
-	if noTLS {
-		return nil, nil, nil
+func (c *serverCmd) AfterHook() error {
+	if c.NoTLS {
+		return nil
 	}
-	if tlsKeyFile == "" || tlsCertFile == "" {
-		return nil, nil, errors.New("you must specify both --tlskey and --tlscert unless --no-tls is set")
+	if c.Tlscert == "" || c.Tlskey == "" {
+		return errors.New("you must specify both --tlskey and --tlscert unless --no-tls is set")
 	}
-	tlsCert, err = ioutil.ReadFile(tlsCertFile) //nolint: gas
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed reading tls certificate file")
-	}
-	tlsKey, err = ioutil.ReadFile(tlsKeyFile) //nolint: gas
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed reading tls key file")
-	}
-	return tlsCert, tlsKey, nil
-}
-
-func (c *srvCmdCfg) serverConfig() (*server.Config, error) {
 	var err error
-	tlsCert, tlsKey, err := tlsData(c.NoTLS, c.TLSCert, c.TLSKey)
+	c.tlsKeyBlock, err = ioutil.ReadFile(c.Tlskey)
 	if err != nil {
-		return nil, err
+		return errors.New("failed reading tls key file")
 	}
+	c.tlsCertBlock, err = ioutil.ReadFile(c.Tlscert)
+	if err != nil {
+		return errors.New("failed reading tls certificate file")
+	}
+	return nil
+}
 
+func (c *serverCmd) Run() error {
 	redisPool := &redis.Pool{
-		MaxActive: c.MaxActive,
+		MaxActive: c.Maxactive,
 		Wait:      true,
 		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(c.RedisURL)
+			return redis.DialURL(c.Redisurl.String())
 		},
 		TestOnBorrow: func(conn redis.Conn, t time.Time) error {
 			_, err := conn.Do("PING")
 			return err
 		},
 	}
-	redisQueue := redisqueue.New(c.RedisPrefix, redisPool)
 
-	sCfg := &server.Config{
+	redisQueue := redisqueue.New(c.Redisprefix, redisPool)
+
+	cfg := &server.Config{
 		Queue:           redisQueue,
 		Httpaddr:        c.Httpaddr,
 		Grpcaddr:        c.Grpcaddr,
-		TLSKeyPEMBlock:  tlsKey,
-		TLSCertPEMBlock: tlsCert,
+		TLSCertPEMBlock: c.tlsCertBlock,
+		TLSKeyPEMBlock:  c.tlsKeyBlock,
 		UseTLS:          !c.NoTLS,
 	}
 
-	return sCfg, nil
+	return server.Run(cfg)
 }
