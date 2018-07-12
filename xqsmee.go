@@ -1,7 +1,14 @@
 package main
 
-import "github.com/WillAbides/xqsmee/cmd"
+import (
+	"log"
+
+	"github.com/WillAbides/xqsmee/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	err := cmd.Execute()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
