@@ -20,6 +20,7 @@ type serverCmd struct {
 	Redisprefix  string   `default:"xqsmee" help:"prefix for redis keys" env:"XQSMEE_REDISPREFIX"`
 	Tlskey       string   `type:"existingfile" help:"file containing a tls key" env:"XQSMEE_TLSKEY"`
 	Tlscert      string   `type:"existingfile" help:"file containing a tls certificate" env:"XQSMEE_TLSCERT"`
+	Publicurl    string   `default:"https://localhost:8443" help:"the http url that end users will use" env:"XQSMEE_PUBLICURL"` //nolint: lll
 	tlsKeyBlock  []byte
 	tlsCertBlock []byte
 }
@@ -65,6 +66,7 @@ func (c *serverCmd) Run() error {
 		TLSCertPEMBlock: c.tlsCertBlock,
 		TLSKeyPEMBlock:  c.tlsKeyBlock,
 		UseTLS:          !c.NoTLS,
+		PublicURL:       c.Publicurl,
 	}
 
 	return server.Run(cfg)

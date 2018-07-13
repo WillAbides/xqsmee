@@ -2,16 +2,37 @@ package hooks
 
 import (
 	"encoding/json"
+	"html/template"
 	"io"
 	"net/http"
+	"net/textproto"
+	"strings"
 	"time"
 
 	"github.com/WillAbides/idcheck"
 	"github.com/WillAbides/xqsmee/queue"
+	"github.com/gobuffalo/packr"
 	"github.com/gorilla/mux"
 )
 
+const (
+	htmlHeader = "text/html"
+	jsonHeader = "application/json"
+)
+
+var (
+	static        = packr.NewBox("./static")
+	tpl           = packr.NewBox("./tpl")
+	queueTemplate = template.Must(template.New("").Parse(tpl.String("queue.gohtml")))
+	indexTemplate = template.Must(template.New("").Parse(tpl.String("index.gohtml")))
+)
+
 type (
+	queueTemplateData struct {
+		QueueURL string
+		Items    []string
+	}
+
 	//IDChecker checks queue IDs
 	IDChecker interface {
 		NewID() (*idcheck.ID, error)
@@ -20,6 +41,7 @@ type (
 
 	//Service is a hooks service
 	Service struct {
+		publicURL          string
 		queue              queue.Queue
 		receivedAtOverride *time.Time
 		idChecker          IDChecker
@@ -27,10 +49,11 @@ type (
 )
 
 //New returns a new hooks service
-func New(queue queue.Queue, idChecker IDChecker) *Service {
+func New(queue queue.Queue, idChecker IDChecker, publicURL string) *Service {
 	return &Service{
 		idChecker: idChecker,
 		queue:     queue,
+		publicURL: publicURL,
 	}
 }
 
@@ -57,6 +80,12 @@ func (s *Service) idCheckMiddleware(next http.Handler) http.Handler {
 //Router is the mux router
 func (s *Service) Router() *mux.Router {
 	r := mux.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		err := indexTemplate.Execute(w, struct{}{})
+		if err != nil {
+			http.Error(w, "failed serving html", http.StatusInternalServerError)
+		}
+	})
 	r.HandleFunc("/_ping", s.pingHandler)
 
 	r.HandleFunc("/q/new", s.newQueueHandler).Methods(http.MethodGet)
@@ -69,6 +98,11 @@ func (s *Service) Router() *mux.Router {
 	sr.HandleFunc("/{subkey}", s.peekHandler).Methods(http.MethodGet)
 
 	sr.Use(s.idCheckMiddleware)
+	staticServer := http.FileServer(static)
+	r.PathPrefix("/static").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/static")
+		staticServer.ServeHTTP(w, r)
+	})
 	return r
 }
 
@@ -109,6 +143,16 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func probablyWantsHTML(r *http.Request) bool {
+	accepts := textproto.MIMEHeader(r.Header)["Accept"]
+	for _, accept := range accepts {
+		if strings.Contains(strings.ToLower(accept), "html") {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) peekHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
@@ -127,6 +171,28 @@ func (s *Service) peekHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+
+	if probablyWantsHTML(r) {
+		var items []string
+		for _, item := range webRequests {
+			jb, err := json.MarshalIndent(item, "", "  ")
+			if err != nil {
+				http.Error(w, "failed encoding json", http.StatusInternalServerError)
+				return
+			}
+			items = append(items, string(jb))
+		}
+		w.Header().Set("Content-Type", htmlHeader)
+		err := queueTemplate.Execute(w, queueTemplateData{
+			QueueURL: strings.TrimRight(s.publicURL, "/") + "/q/" + key,
+			Items:    items,
+		})
+		if err != nil {
+			http.Error(w, "failed serving html", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", jsonHeader)
 	err = json.NewEncoder(w).Encode(webRequests)
 	if err != nil {
 		http.Error(w, "failed encoding json", http.StatusInternalServerError)

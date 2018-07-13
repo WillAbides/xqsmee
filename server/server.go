@@ -18,10 +18,11 @@ type Config struct {
 	Queue           queue.Queue
 	Httpaddr        string
 	Grpcaddr        string
+	PublicURL       string
+	idcheckSalt     string
 	TLSCertPEMBlock []byte
 	TLSKeyPEMBlock  []byte
 	UseTLS          bool
-	idcheckSalt     string
 }
 
 func (config *Config) buildListeners() (httpListener, grpcListener net.Listener, err error) {
@@ -59,7 +60,7 @@ func Run(config *Config) error {
 	idChecker := idcheck.NewIDChecker(idcheck.Salt(config.idcheckSalt))
 
 	httpServer := &http.Server{
-		Handler: hooks.New(config.Queue, idChecker).Router(),
+		Handler: hooks.New(config.Queue, idChecker, config.PublicURL).Router(),
 	}
 
 	go func() {

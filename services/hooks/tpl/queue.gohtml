@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>xqsmee</title>
+    <link rel="stylesheet" href="/static/main.min.css">
+</head>
+<body>
+<header class="text-white text-center p-responsive bg-blue d-flex flex-column flex-items-center flex-justify-center"
+        style="height: 40vh">
+    <h1 class="f00-light">xqsmee</h1>
+    <h2 class="blue-700">Webhook queueing service</h2>
+    <p class="lead text-white" style="opacity: 0.8">Stores webhook payloads until you're ready to process them.</p>
+
+    <input type="text" id="url" readonly="" class="form-control input-xl width-fit one-third" value='{{.QueueURL}}'>
+</header>
+
+<main class="container-lg py-6 mt-6 p-responsive">
+    <div class="markdown-body">
+    {{if .Items -}}
+        <h1 class="f1 text-normal">Queued Items</h1>
+    {{- range .Items }}
+        <div>
+    <pre>
+    {{ . }}
+    </pre>
+        </div>
+    {{- end}}
+    {{- else}}
+        <h1 class="f1 text-center text-normal">This queue is empty</h1>
+    {{- end}}
+    </div>
+</main>
+
+</body>
+</html>

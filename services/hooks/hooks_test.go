@@ -39,7 +39,7 @@ func testSetup(t *testing.T) *testObjects {
 	ts, err := ptypes.TimestampProto(now)
 	require.Nil(t, err)
 	return &testObjects{
-		service: New(mockQueue, idcheck.NewIDChecker()),
+		service: New(mockQueue, idcheck.NewIDChecker(), "https://foo.com"),
 		queue:   mockQueue,
 		teardown: func() {
 			ctrl.Finish()
