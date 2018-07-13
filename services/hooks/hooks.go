@@ -23,9 +23,14 @@ const (
 var (
 	static        = packr.NewBox("./static")
 	tpl           = packr.NewBox("./tpl")
+	queueTemplate *template.Template
+	indexTemplate *template.Template
+)
+
+func init() {
 	queueTemplate = template.Must(template.New("").Parse(tpl.String("queue.gohtml")))
 	indexTemplate = template.Must(template.New("").Parse(tpl.String("index.gohtml")))
-)
+}
 
 type (
 	queueTemplateData struct {
