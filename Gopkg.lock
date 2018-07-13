@@ -20,6 +20,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/gobuffalo/packr"
+  packages = ["."]
+  revision = "bd47f2894846e32edcf9aa37290fef76c327883f"
+  version = "v1.11.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/golang/mock"
   packages = ["gomock"]
@@ -157,6 +163,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a5a44f73b6f5e932340285a9e60177083217c6bca6b80d4637ea29e5bd1a14ae"
+  inputs-digest = "e5c6e8ab9183a9b30f40947460c4452ceabac8bd6c46497de817ffb7089745cf"
   solver-name = "gps-cdcl"
   solver-version = 1

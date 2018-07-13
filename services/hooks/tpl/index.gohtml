@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>xqsmee</title>
+    <link rel="stylesheet" href="/static/main.min.css">
+</head>
+<body>
+<header class="text-white text-center p-responsive bg-blue d-flex flex-column flex-items-center flex-justify-center"
+        style="height: 40vh">
+    <h1 class="f00-light">xqsmee</h1>
+    <h2 class="blue-700">Webhook queueing service</h2>
+    <p class="lead text-white" style="opacity: 0.8">Stores webhook payloads until you're ready to process them.</p>
+    <a href="/q/new" class="btn btn-outline btn-outline-blue">Create a new queue</a>
+</header>
+
+<main class="container-lg py-6 mt-6 p-responsive">
+    <p class="lead text-center col-12 col-md-8 mx-auto">
+        If you need to respond to webhooks but can't always have a service running, you need a way to queue up those
+        webhooks until they can be processed. <strong>xqsmee</strong> will store all payloads it receives and serves
+        them to you over grpc. Each webhook is only served once, so you can have multiple processes working off the same
+        xqsmee queue without worrying about processing the same event twice.
+    </p>
+
+
+    <p class="lead text-center col-12 col-md-8 mx-auto">Tell your webhook source to send payloads to your
+        <strong>xqsmee</strong> queue, then use the
+        <a href="https://github.com/WillAbides/xqsmee" target="_blank"
+           rel="noopener noreferrer">xqsmee client</a> to fetch them.
+    </p>
+</main>
+
+</body>
+</html>
