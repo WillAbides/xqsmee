@@ -2,3 +2,5 @@ bin/
 Dockerfile
 .dockerignore
 Gopkg.*
+script/vendor/
+script/bin/
