@@ -4,3 +4,4 @@ Dockerfile
 Gopkg.*
 script/vendor/
 script/bin/
+dist/
