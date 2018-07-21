@@ -3,6 +3,7 @@
 set -e
 ROOTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 cd "$ROOTPATH"
-script/packr
-trap "script/packr clean" EXIT
-go build -o ./bin/xqsmee .
+
+[ -f "script/bin/packr" ]  || script/bootstrap
+
+script/bin/packr $@

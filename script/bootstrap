@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -8,17 +8,17 @@ cd "$ROOTPATH"
 mkdir -p tmp
 
 if [[ ! -x "$(which go)" ]]; then
-  echo >&2 "this requires an intallation of Go to build."
+  echo >&2 "this requires an installation of go to build."
   exit 1
 fi
 
 if [[ ! -x "$(which dep)" ]]; then
-  echo >&2 "this requires an intallation of dep to build."
+  echo >&2 "this requires an installation of dep to build."
   exit 1
 fi
 
 if [[ ! -x "$(which protoc)" ]]; then
-  echo >&2 "this requires an intallation of protoc to build."
+  echo >&2 "this requires an installation of protoc to build."
   exit 1
 fi
 
@@ -29,4 +29,5 @@ fi
   go install ./vendor/github.com/golang/protobuf/protoc-gen-go
   go install ./vendor/github.com/golang/mock/mockgen
   go install ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint/
+  go install ./vendor/github.com/gobuffalo/packr/packr
 )
