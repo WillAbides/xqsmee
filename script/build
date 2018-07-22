@@ -1,8 +1,11 @@
 #!/bin/bash
 
 set -e
+builtat=`date -u "+%Y-%m-%dT%H:%M:%SZ"`
 ROOTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 cd "$ROOTPATH"
 script/packr
 trap "script/packr clean" EXIT
-go build -o ./bin/xqsmee .
+go build -o ./bin/xqsmee -ldflags \
+"-X github.com/WillAbides/xqsmee/common/builddata.date=$builtat" \
+.

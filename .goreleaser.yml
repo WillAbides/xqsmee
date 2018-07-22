@@ -9,6 +9,11 @@ builds:
   hooks:
     pre: ./script/packr
     post: ./script/packr clean
+  ldflags:
+  - -s -w
+    -X github.com/WillAbides/xqsmee/common/builddata.version={{.Version}}
+    -X github.com/WillAbides/xqsmee/common/builddata.commit={{.Commit}}
+    -X github.com/WillAbides/xqsmee/common/builddata.date={{.Date}}
 archive:
   replacements:
     darwin: Darwin
