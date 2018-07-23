@@ -14,7 +14,7 @@ type clientCmd struct {
 	Port     int    `default:"9443" short:"p" help:"server grpc port"`
 	Insecure bool   `help:"don't check for valid certificate"`
 	NoTLS    bool   `help:"don't use tls (insecure)"`
-	Ifs      string `default:"\n" help:"record separator"`
+	Ifs      string `default:"${defaultIfs}" help:"record separator"`
 }
 
 func (c *clientCmd) Run() error {

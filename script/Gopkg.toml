@@ -5,6 +5,10 @@ required = [
   "github.com/gobuffalo/packr/packr"
 ]
 
+ignored = [
+  "github.com/WillAbides/xqsmee/script/*",
+]
+
 [[constraint]]
   name = "github.com/golang/protobuf"
   branch = "master"
